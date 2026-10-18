@@ -8,8 +8,11 @@ from sqlalchemy.pool import StaticPool
 def _database_url() -> str:
     url = os.environ.get("DATABASE_URL", "sqlite:///./clinic.db")
     # Render/Heroku-style URLs use "postgres://", which SQLAlchemy rejects.
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
+    # Also name the driver explicitly: a bare "postgresql://" may default to
+    # psycopg (v3) in newer SQLAlchemy, but this project installs psycopg2.
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg2://" + url[len(prefix):]
     return url
 
 
