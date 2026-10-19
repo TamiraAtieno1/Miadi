@@ -66,7 +66,7 @@ Working hours are defined in the clinic's timezone (Africa/Nairobi, EAT, UTC+3) 
 |---|---|
 | Created | 201 |
 | Malformed input, misaligned slot, outside hours, in the past | 422 |
-| Slot already taken, already cancelled, rescheduling a cancelled appointment | 409 |
+| Slot already taken, already cancelled, rescheduling a cancelled appointment, cancelling/rescheduling one that has already started, rescheduling to the time it already has | 409 |
 | Unknown doctor / appointment / patient | 404 |
 
 **Database: PostgreSQL.**
@@ -74,15 +74,18 @@ Partial unique indexes, real transactions, and a realistic production path. SQLi
 
 ### 1.5 Assumptions (ambiguities I resolved)
 
-_Edit these to match what you actually decide._
+_Decisions I made where the brief was ambiguous._
 
-- Slots must start on :00 or :30; anything else is rejected.
-- Appointments can't be booked in the past or (bonus) within 1 hour of now.
-- Patients are identified by id with no authentication; auth is out of scope.
-- A patient may hold multiple appointments, including at the same time with different doctors. _(Decide: should this be blocked?)_
-- Cancelling an already-cancelled appointment returns 409.
-- Rescheduling to the same slot returns 409 (no-op is treated as a conflict).
-- Cancelling is allowed up to the appointment start. _(Decide: any cutoff?)_
+- Slots start on :00 or :30; anything else is rejected (422).
+- A slot is bookable only if it is not in the past and starts at least 1 hour from now (the bonus rule). Availability hides slots that are no longer bookable, so the list matches exactly what `POST /appointments` will accept.
+- Clients must send timestamps with a UTC offset (e.g. `2026-10-26T09:00:00+03:00`). A timestamp without one is rejected (422) rather than guessed. Responses use clinic local time (+03:00).
+- Patients are identified by id with no authentication; auth is out of scope. `POST /patients` and `GET /doctors` exist only so the API can be tried end to end.
+- A patient may hold several appointments, including at the same time with different doctors (not blocked).
+- Cancelling an already-cancelled appointment returns 409. A cancel reason is required and cannot be blank.
+- Cancelling or rescheduling an appointment that has already started returns 409.
+- Rescheduling keeps the same doctor; moving to the time it already has returns 409.
+- "Upcoming appointments" means booked (not cancelled) appointments that haven't started yet.
+- A doctor with no working-hours row for a weekday doesn't work that day, so availability there is an empty list (200), not an error.
 - Doctors have no leave or holiday handling yet.
 
 ### 1.6 How it could grow
@@ -106,10 +109,33 @@ pip install -r requirements-dev.txt
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/clinic
 
 uvicorn app.main:app --reload     # http://localhost:8000/docs
-pytest -q                         # tests use in-memory SQLite unless DATABASE_URL is set
+pytest -q                         # in-memory SQLite by default; the concurrency test only runs when DATABASE_URL is Postgres
 ```
 
 On startup the app creates the tables and seeds 5 doctors (Mon-Fri, 09:00-17:00 EAT) plus one demo patient if the database is empty.
+
+### API summary
+
+| Endpoint | What it does | Success | Errors |
+|---|---|---|---|
+| `GET /doctors/{id}/availability?date=YYYY-MM-DD` | Free 30-minute slots for the doctor on that clinic-local date | 200 | 404 unknown doctor, 422 bad date |
+| `POST /appointments` | Book a slot (`doctor_id`, `patient_id`, `start_time`) | 201 | 404, 409 slot taken, 422 invalid slot |
+| `PATCH /appointments/{id}/cancel` | Cancel with a `reason`; the slot becomes bookable again | 200 | 404, 409 already cancelled or started, 422 missing reason |
+| `PATCH /appointments/{id}/reschedule` | Move to a new `start_time` (same doctor) | 200 | 404, 409 cancelled / slot taken / same time, 422 invalid slot |
+| `GET /patients/{id}/appointments` _(bonus)_ | Upcoming booked appointments, soonest first | 200 | 404 |
+| `GET /doctors`, `POST /patients` _(extras)_ | List doctors with their hours; create a patient | 200 / 201 | 422 |
+
+Every expected failure has the same shape, e.g. `{"detail": "That slot is already booked.", "code": "slot_unavailable"}`.
+Seeded data: doctors with ids 1-5 and one patient with id 1. Interactive docs are at `/docs`.
+
+Try it (use a future weekday for the date):
+
+```bash
+BASE=https://miadi-xw8x.onrender.com
+curl "$BASE/doctors/1/availability?date=2026-10-26"
+curl -X POST "$BASE/appointments" -H "Content-Type: application/json" \
+  -d '{"doctor_id": 1, "patient_id": 1, "start_time": "2026-10-26T09:00:00+03:00"}'
+```
 
 ## 3. CI/CD and Deployment
 
