@@ -2,8 +2,8 @@
 
 Miadi (Swahili for "appointment") is a REST API for booking, cancelling and rescheduling 30-minute appointments at a small clinic (5 doctors), built with FastAPI and PostgreSQL.
 
-**Live URL:** _TODO_
-**API docs:** _TODO_/docs
+**Live URL:** https://miadi-xw8x.onrender.com
+**API docs:** https://miadi-xw8x.onrender.com/docs
 
 ---
 
@@ -113,7 +113,7 @@ On startup the app creates the tables and seeds 5 doctors (Mon-Fri, 09:00-17:00 
 
 ## 3. CI/CD and Deployment
 
-**Public URL:** _TODO after first deploy_
+**Public URL:** https://miadi-xw8x.onrender.com
 
 **Branch that deploys:** `main`. Work happens on feature branches; merging a PR into `main` triggers a deploy.
 
