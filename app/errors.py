@@ -1,0 +1,39 @@
+class BookingError(Exception):
+    """Base class for expected, user-facing failures.
+
+    Each subclass carries the HTTP status and a stable machine-readable code,
+    so the API can return {"detail": "...", "code": "..."} consistently.
+    """
+
+    status_code = 400
+    code = "booking_error"
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
+class NotFoundError(BookingError):
+    status_code = 404
+    code = "not_found"
+
+
+class InvalidSlotError(BookingError):
+    """The requested time is not a valid bookable slot (422)."""
+
+    status_code = 422
+    code = "invalid_slot"
+
+
+class SlotUnavailableError(BookingError):
+    """The slot is valid but already taken (409)."""
+
+    status_code = 409
+    code = "slot_unavailable"
+
+
+class InvalidStateError(BookingError):
+    """The appointment is in a state that forbids this action (409)."""
+
+    status_code = 409
+    code = "invalid_state"
