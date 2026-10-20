@@ -12,7 +12,7 @@ def _database_url() -> str:
     # psycopg (v3) in newer SQLAlchemy, but this project installs psycopg2.
     for prefix in ("postgres://", "postgresql://"):
         if url.startswith(prefix):
-            return "postgresql+psycopg2://" + url[len(prefix):]
+            return "postgresql+psycopg2://" + url[len(prefix) :]
     return url
 
 

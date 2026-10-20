@@ -5,7 +5,7 @@ without HTTP. The database enforces the final guarantee (the partial unique
 index on active appointments); the checks here give friendly errors first.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -72,9 +72,7 @@ def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -
     local = start_utc.astimezone(CLINIC_TZ)
 
     if local.minute not in (0, 30) or local.second or local.microsecond:
-        raise InvalidSlotError(
-            "Appointments start on the hour or half hour (e.g. 09:00 or 09:30)."
-        )
+        raise InvalidSlotError("Appointments start on the hour or half hour (e.g. 09:00 or 09:30).")
 
     if start_utc < now:
         raise InvalidSlotError("Cannot book a slot in the past.")
@@ -135,11 +133,11 @@ def book_appointment(
     db.add(appointment)
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as error:
         # Two requests passed the check at the same moment; the partial unique
         # index let exactly one through.
         db.rollback()
-        raise SlotUnavailableError("That slot was just taken by someone else.")
+        raise SlotUnavailableError("That slot was just taken by someone else.") from error
     db.refresh(appointment)
     return appointment
 
@@ -192,9 +190,9 @@ def reschedule_appointment(
     appointment.end_time = new_start_utc + SLOT_LENGTH
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as error:
         db.rollback()
-        raise SlotUnavailableError("That slot was just taken by someone else.")
+        raise SlotUnavailableError("That slot was just taken by someone else.") from error
     db.refresh(appointment)
     return appointment
 
@@ -219,7 +217,7 @@ def get_availability(
     if hours is None:
         return []
 
-    day_start = datetime.combine(day, time.min, tzinfo=CLINIC_TZ).astimezone(timezone.utc)
+    day_start = datetime.combine(day, time.min, tzinfo=CLINIC_TZ).astimezone(UTC)
     day_end = day_start + timedelta(days=1)
     booked = {
         as_utc(start)
@@ -239,7 +237,7 @@ def get_availability(
 
     slots: list[tuple[datetime, datetime]] = []
     while current + SLOT_LENGTH <= closing:
-        current_utc = current.astimezone(timezone.utc)
+        current_utc = current.astimezone(UTC)
         if current_utc >= earliest and current_utc not in booked:
             slots.append((current, current + SLOT_LENGTH))
         current += SLOT_LENGTH

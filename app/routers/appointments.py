@@ -28,9 +28,7 @@ def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db)):
     response_model=AppointmentOut,
     summary="Cancel an appointment (the slot becomes bookable again)",
 )
-def cancel_appointment(
-    appointment_id: int, body: CancelRequest, db: Session = Depends(get_db)
-):
+def cancel_appointment(appointment_id: int, body: CancelRequest, db: Session = Depends(get_db)):
     return booking.cancel_appointment(db, appointment_id, body.reason)
 
 
