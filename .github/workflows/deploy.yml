@@ -11,6 +11,7 @@ concurrency:
 jobs:
   test:
     uses: ./.github/workflows/ci.yml   # lint, format check and tests first
+    secrets: inherit                   # pass CI_DB_PASSWORD through to ci.yml
 
   deploy:
     needs: test                        # only runs if everything above passed
