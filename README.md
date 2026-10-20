@@ -141,13 +141,17 @@ curl -X POST "$BASE/appointments" -H "Content-Type: application/json" \
 
 **Public URL:** https://miadi-xw8x.onrender.com
 
-**Branch that deploys:** `main`. Work happens on feature branches; merging a PR into `main` triggers a deploy.
+**Branches:**
+- `develop` is the default integration branch. Feature branches (`feat/…`, `fix/…`, `docs/…`, `chore/…`, `ci/…`) are merged into it by pull request.
+- `prod` is the production branch. Merging `develop` into `prod` triggers a deploy.
 
 **Pipeline** (`.github/workflows/ci.yml`, GitHub Actions):
-1. **On every pull request:** install dependencies and run `pytest` against a real Postgres 16 service container (so the partial unique index is tested on the same engine as production).
-2. **On push to `main`** (a merged PR): run the same tests again, and only if they pass, call the Render deploy hook, which makes Render pull `main`, build the Docker image and restart the service.
+1. **On every pull request, and on pushes to `develop`:** install dependencies and run `pytest` against a real Postgres 16 service container (so the partial unique index is tested on the same engine as production).
+2. **On push to `prod`** (a merged release PR): run the same tests again, and only if they pass, call the Render deploy hook, which makes Render pull `prod`, build the Docker image and restart the service.
 
 Render's own auto-deploy is turned off so a deploy can never happen without passing tests. The hook URL is stored as the GitHub secret `RENDER_DEPLOY_HOOK_URL`.
+
+**Free-tier note:** the first request after the service has been idle can take about a minute to respond while Render wakes it up.
 
 ## 4. AI Reflection
 

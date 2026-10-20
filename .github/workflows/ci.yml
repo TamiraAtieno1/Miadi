@@ -3,7 +3,7 @@ name: CI/CD
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [develop, prod]
 
 jobs:
   test:
@@ -35,9 +35,9 @@ jobs:
       - run: pytest -q
 
   deploy:
-    # Only after tests pass, and only for pushes to main (i.e. merged PRs).
+    # Only after tests pass, and only for pushes to prod (i.e. merged release PRs).
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/prod'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy
