@@ -43,5 +43,12 @@ jobs:
       - name: Check formatting
         run: ruff format --check .
 
-      - name: Test
-        run: pytest -q
+      - name: Test with coverage
+        run: pytest -q --cov --cov-report=term-missing --cov-report=lcov
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true   # a Coveralls outage must not fail the build
+        with:
+          file: coverage.lcov
+          format: lcov
