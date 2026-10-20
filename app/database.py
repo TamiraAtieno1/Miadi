@@ -16,16 +16,20 @@ def _database_url() -> str:
     return url
 
 
+def _engine_options(url: str) -> dict:
+    """Extra create_engine() arguments needed for a given database URL."""
+    options: dict = {}
+    if url.startswith("sqlite"):
+        options["connect_args"] = {"check_same_thread": False}
+        if url in ("sqlite://", "sqlite:///:memory:"):
+            # In-memory SQLite needs one shared connection.
+            options["poolclass"] = StaticPool
+    return options
+
+
 DATABASE_URL = _database_url()
 
-_engine_kwargs: dict = {}
-if DATABASE_URL.startswith("sqlite"):
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
-    if DATABASE_URL in ("sqlite://", "sqlite:///:memory:"):
-        # In-memory SQLite needs one shared connection.
-        _engine_kwargs["poolclass"] = StaticPool
-
-engine = create_engine(DATABASE_URL, **_engine_kwargs)
+engine = create_engine(DATABASE_URL, **_engine_options(DATABASE_URL))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
