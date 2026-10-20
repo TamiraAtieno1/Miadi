@@ -221,6 +221,31 @@ def test_reschedule_unknown_appointment(db, world):
         booking.reschedule_appointment(db, 999, local(MON, 10), now=NOW)
 
 
+def test_cannot_reschedule_an_appointment_that_already_started(db, world):
+    appt = book(db, world, local(MON, 9))
+    with pytest.raises(InvalidStateError, match="already started"):
+        booking.reschedule_appointment(db, appt.id, local(MON, 10), now=local(MON, 9, 30))
+
+
+def test_reschedule_race_is_caught_by_the_database_constraint(db, world, monkeypatch):
+    """Two clients move into the same free slot at once.
+
+    The 'is it free?' check is bypassed to simulate both passing it; only the
+    partial unique index can stop the second one. The service must report a
+    clean conflict and leave the original booking untouched.
+    """
+    mine = book(db, world, local(MON, 9))
+    book(db, world, local(MON, 10), patient=world.p2)
+
+    monkeypatch.setattr(booking, "validate_slot", lambda db, doctor_id, start, now: as_utc(start))
+    with pytest.raises(SlotUnavailableError, match="just taken"):
+        booking.reschedule_appointment(db, mine.id, local(MON, 10), now=NOW)
+
+    db.refresh(mine)
+    assert as_utc(mine.start_time) == local(MON, 9).astimezone(UTC)
+    assert mine.status == STATUS_BOOKED
+
+
 # --- availability ----------------------------------------------------------
 
 
