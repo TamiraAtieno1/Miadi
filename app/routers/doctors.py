@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Doctor
 from app.schemas import AvailabilityOut, DoctorOut, Slot
-from app.services import booking
+from app.services import availability
 from app.timeutils import CLINIC_TZ
 
 router = APIRouter(prefix="/doctors", tags=["doctors"])
@@ -30,7 +30,7 @@ def doctor_availability(
     db: Session = Depends(get_db),
 ):
     """Return the doctor's free 30-minute slots for a clinic-local date."""
-    slots = booking.get_availability(db, doctor_id, day)
+    slots = availability.get_availability(db, doctor_id, day)
     return AvailabilityOut(
         doctor_id=doctor_id,
         date=day,

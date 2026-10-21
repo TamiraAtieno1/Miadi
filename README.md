@@ -38,7 +38,7 @@ Client -> Routers (HTTP, validation, status codes)
 ```
 
 - **routers/**: thin HTTP layer (doctors, appointments, patients)
-- **services/booking.py**: all booking logic, so it is testable without HTTP
+- **services/**: all booking logic, split by job so it is testable without HTTP: `lookups.py` (database lookups), `slots.py` (slot validation rules), `booking.py` (book, cancel, reschedule) and `availability.py` (free slots and upcoming appointments)
 - **schemas.py**: Pydantic request/response models
 - **models.py**: ORM models
 - **alembic/**: database migrations
