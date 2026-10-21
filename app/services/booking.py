@@ -38,7 +38,7 @@ def get_doctor(db: Session, doctor_id: int) -> Doctor:
     """Return the doctor or raise `NotFoundError`."""
     doctor = db.get(Doctor, doctor_id)
     if doctor is None:
-        raise NotFoundError(f"Doctor {doctor_id} not found.")
+        raise NotFoundError(f"We couldn't find a doctor with ID {doctor_id}.")
     return doctor
 
 
@@ -46,7 +46,7 @@ def get_patient(db: Session, patient_id: int) -> Patient:
     """Return the patient or raise `NotFoundError`."""
     patient = db.get(Patient, patient_id)
     if patient is None:
-        raise NotFoundError(f"Patient {patient_id} not found.")
+        raise NotFoundError(f"We couldn't find a patient with ID {patient_id}.")
     return patient
 
 
@@ -54,7 +54,7 @@ def get_appointment(db: Session, appointment_id: int) -> Appointment:
     """Return the appointment or raise `NotFoundError`."""
     appointment = db.get(Appointment, appointment_id)
     if appointment is None:
-        raise NotFoundError(f"Appointment {appointment_id} not found.")
+        raise NotFoundError(f"We couldn't find an appointment with ID {appointment_id}.")
     return appointment
 
 
@@ -76,16 +76,20 @@ def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -
     local = start_utc.astimezone(CLINIC_TZ)
 
     if local.minute not in (0, 30) or local.second or local.microsecond:
-        raise InvalidSlotError("Appointments start on the hour or half hour (e.g. 09:00 or 09:30).")
+        raise InvalidSlotError(
+            "Appointments start on the hour or half hour, for example 09:00 or 09:30."
+        )
 
     if start_utc < now:
-        raise InvalidSlotError("Cannot book a slot in the past.")
+        raise InvalidSlotError("That slot is in the past. Please choose a future time.")
     if start_utc < now + MIN_NOTICE:
         raise InvalidSlotError("Appointments must be booked at least 1 hour in advance.")
 
     hours = _working_hours(db, doctor_id, local.weekday())
     if hours is None:
-        raise InvalidSlotError(f"The doctor does not work on {local:%A}s.")
+        raise InvalidSlotError(
+            f"The doctor does not work on {local:%A}s. Please choose a day they work."
+        )
 
     local_end = local + SLOT_LENGTH
     inside_hours = (
@@ -95,8 +99,8 @@ def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -
     )
     if not inside_hours:
         raise InvalidSlotError(
-            f"Slot is outside the doctor's working hours on {local:%A} "
-            f"({hours.start_time:%H:%M}-{hours.end_time:%H:%M})."
+            f"That time is outside the doctor's working hours on {local:%A} "
+            f"({hours.start_time:%H:%M}-{hours.end_time:%H:%M}). Please choose a time within them."
         )
 
     taken = db.scalar(
@@ -107,7 +111,9 @@ def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -
         )
     )
     if taken is not None:
-        raise SlotUnavailableError("That slot is already booked.")
+        raise SlotUnavailableError(
+            "Sorry, that slot is already booked. Please choose another time."
+        )
 
     return start_utc
 
@@ -147,7 +153,9 @@ def book_appointment(
         # Two requests passed the check at the same moment; the partial unique
         # index let exactly one through.
         db.rollback()
-        raise SlotUnavailableError("That slot was just taken by someone else.") from error
+        raise SlotUnavailableError(
+            "Sorry, that slot was just taken by someone else. Please choose another time."
+        ) from error
     db.refresh(appointment)
     return appointment
 
@@ -163,9 +171,11 @@ def cancel_appointment(
     appointment = get_appointment(db, appointment_id)
 
     if appointment.status == STATUS_CANCELLED:
-        raise InvalidStateError("Appointment is already cancelled.")
+        raise InvalidStateError("This appointment is already cancelled.")
     if as_utc(appointment.start_time) <= now:
-        raise InvalidStateError("Cannot cancel an appointment that has already started.")
+        raise InvalidStateError(
+            "This appointment has already started, so it can no longer be cancelled."
+        )
 
     appointment.status = STATUS_CANCELLED
     appointment.cancel_reason = reason
@@ -192,11 +202,17 @@ def reschedule_appointment(
     appointment = get_appointment(db, appointment_id)
 
     if appointment.status == STATUS_CANCELLED:
-        raise InvalidStateError("Cannot reschedule a cancelled appointment.")
+        raise InvalidStateError(
+            "A cancelled appointment can't be rescheduled. Please book a new slot instead."
+        )
     if as_utc(appointment.start_time) <= now:
-        raise InvalidStateError("Cannot reschedule an appointment that has already started.")
+        raise InvalidStateError(
+            "This appointment has already started, so it can no longer be rescheduled."
+        )
     if as_utc(new_start) == as_utc(appointment.start_time):
-        raise SlotUnavailableError("The appointment is already at that time.")
+        raise SlotUnavailableError(
+            "The appointment is already at that time. Please choose a different time."
+        )
 
     new_start_utc = validate_slot(db, appointment.doctor_id, new_start, now)
 
@@ -206,7 +222,9 @@ def reschedule_appointment(
         db.commit()
     except IntegrityError as error:
         db.rollback()
-        raise SlotUnavailableError("That slot was just taken by someone else.") from error
+        raise SlotUnavailableError(
+            "Sorry, that slot was just taken by someone else. Please choose another time."
+        ) from error
     db.refresh(appointment)
     return appointment
 

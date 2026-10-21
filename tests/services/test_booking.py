@@ -94,7 +94,7 @@ def test_database_constraint_backs_up_the_application_check(db, world, monkeypat
 
 
 def test_unknown_doctor_or_patient(db, world):
-    with pytest.raises(NotFoundError, match="Doctor"):
+    with pytest.raises(NotFoundError, match="doctor"):
         booking.book_appointment(db, 999, world.p1.id, local(MON, 9), now=NOW)
-    with pytest.raises(NotFoundError, match="Patient"):
+    with pytest.raises(NotFoundError, match="patient"):
         booking.book_appointment(db, world.doctor.id, 999, local(MON, 9), now=NOW)
