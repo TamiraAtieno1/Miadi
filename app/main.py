@@ -39,6 +39,7 @@ app.include_router(appointments.router)
 app.include_router(patients.router)
 
 
-@app.get("/health", tags=["meta"])
+# Uptime monitors (e.g. UptimeRobot's free plan) probe with HEAD, so allow it as well as GET.
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["meta"])
 def health() -> dict:
     return {"status": "ok"}
