@@ -15,6 +15,7 @@ router = APIRouter(prefix="/doctors", tags=["doctors"])
 
 @router.get("", response_model=list[DoctorOut], summary="List doctors")
 def list_doctors(db: Session = Depends(get_db)):
+    """List all doctors with their working hours."""
     return db.scalars(select(Doctor).order_by(Doctor.id)).all()
 
 
@@ -28,6 +29,7 @@ def doctor_availability(
     day: date = Query(..., alias="date", description="Clinic-local date, YYYY-MM-DD"),
     db: Session = Depends(get_db),
 ):
+    """Return the doctor's free 30-minute slots for a clinic-local date."""
     slots = booking.get_availability(db, doctor_id, day)
     return AvailabilityOut(
         doctor_id=doctor_id,

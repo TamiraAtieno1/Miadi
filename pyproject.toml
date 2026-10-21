@@ -38,7 +38,11 @@ target-version = "py312"
 
 [tool.ruff.lint]
 # E/W: pycodestyle, F: pyflakes, I: import sorting, B: bugbear, UP: modern syntax
-select = ["E", "W", "F", "I", "B", "UP"]
+select = ["E", "W", "F", "I", "B", "UP", "D101", "D102", "D103", "D105", "D106", "D107"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"alembic/**" = ["D"]
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI's dependency-injection style puts calls in default arguments on purpose:

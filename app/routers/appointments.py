@@ -20,6 +20,7 @@ router = APIRouter(prefix="/appointments", tags=["appointments"])
     summary="Book a slot",
 )
 def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db)):
+    """Book a 30-minute slot. Returns 409 if it is taken and 422 if it is not a valid slot."""
     return booking.book_appointment(db, body.doctor_id, body.patient_id, body.start_time)
 
 
@@ -29,6 +30,7 @@ def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db)):
     summary="Cancel an appointment (the slot becomes bookable again)",
 )
 def cancel_appointment(appointment_id: int, body: CancelRequest, db: Session = Depends(get_db)):
+    """Cancel an appointment with a reason, freeing its slot."""
     return booking.cancel_appointment(db, appointment_id, body.reason)
 
 
@@ -40,4 +42,5 @@ def cancel_appointment(appointment_id: int, body: CancelRequest, db: Session = D
 def reschedule_appointment(
     appointment_id: int, body: RescheduleRequest, db: Session = Depends(get_db)
 ):
+    """Move an appointment to a new slot with the same doctor."""
     return booking.reschedule_appointment(db, appointment_id, body.start_time)

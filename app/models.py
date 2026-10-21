@@ -19,10 +19,13 @@ STATUS_CANCELLED = "cancelled"
 
 
 def _utcnow() -> datetime:
+    """Current time in UTC, used as the default for timestamp columns."""
     return datetime.now(UTC)
 
 
 class Doctor(Base):
+    """A clinic doctor. Their weekly schedule is stored in `WorkingHours`."""
+
     __tablename__ = "doctors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -52,6 +55,8 @@ class WorkingHours(Base):
 
 
 class Patient(Base):
+    """A person who books appointments. There is no authentication in this scope."""
+
     __tablename__ = "patients"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -61,6 +66,12 @@ class Patient(Base):
 
 
 class Appointment(Base):
+    """A 30-minute booking of a doctor by a patient.
+
+    Times are stored in UTC. Cancelling is a soft delete: the row stays with
+    status `cancelled`, a reason and a timestamp.
+    """
+
     __tablename__ = "appointments"
     __table_args__ = (
         # The core concurrency guarantee: at most ONE active booking per

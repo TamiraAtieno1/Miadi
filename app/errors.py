@@ -9,11 +9,14 @@ class BookingError(Exception):
     code = "booking_error"
 
     def __init__(self, message: str):
+        """Store the human-readable message that is sent back to the client."""
         super().__init__(message)
         self.message = message
 
 
 class NotFoundError(BookingError):
+    """The doctor, patient or appointment does not exist (404)."""
+
     status_code = 404
     code = "not_found"
 

@@ -6,6 +6,8 @@ from app.timeutils import to_clinic_time
 
 
 class WorkingHoursOut(BaseModel):
+    """A doctor's working hours on one weekday, in clinic local time."""
+
     model_config = ConfigDict(from_attributes=True)
 
     weekday: int  # 0 = Monday ... 6 = Sunday
@@ -14,6 +16,8 @@ class WorkingHoursOut(BaseModel):
 
 
 class DoctorOut(BaseModel):
+    """A doctor with their weekly working hours."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -23,11 +27,15 @@ class DoctorOut(BaseModel):
 
 
 class Slot(BaseModel):
+    """One free 30-minute slot."""
+
     start: dt.datetime
     end: dt.datetime
 
 
 class AvailabilityOut(BaseModel):
+    """The free slots for a doctor on one clinic-local date."""
+
     doctor_id: int
     date: dt.date
     timezone: str
@@ -35,6 +43,8 @@ class AvailabilityOut(BaseModel):
 
 
 class AppointmentCreate(BaseModel):
+    """Request body for booking a slot."""
+
     doctor_id: int
     patient_id: int
     # AwareDatetime rejects timestamps without an offset, so there is no
@@ -43,16 +53,22 @@ class AppointmentCreate(BaseModel):
 
 
 class CancelRequest(BaseModel):
+    """Request body for cancelling an appointment. A reason is required."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     reason: str = Field(min_length=1, max_length=500)
 
 
 class RescheduleRequest(BaseModel):
+    """Request body for moving an appointment to a new start time."""
+
     start_time: AwareDatetime
 
 
 class AppointmentOut(BaseModel):
+    """An appointment as returned by the API, with times in clinic local time."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -70,14 +86,18 @@ class AppointmentOut(BaseModel):
     # matches the timestamps clients send and the working hours they see.
     @field_serializer("start_time", "end_time", "created_at", "updated_at")
     def _to_clinic_time(self, value: dt.datetime) -> dt.datetime:
+        """Serialise a stored UTC timestamp as clinic local time."""
         return to_clinic_time(value)
 
     @field_serializer("cancelled_at")
     def _to_clinic_time_optional(self, value: dt.datetime | None) -> dt.datetime | None:
+        """Same as above for the optional `cancelled_at` timestamp."""
         return to_clinic_time(value) if value else None
 
 
 class PatientCreate(BaseModel):
+    """Request body for creating a patient."""
+
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=100)
@@ -86,6 +106,8 @@ class PatientCreate(BaseModel):
 
 
 class PatientOut(BaseModel):
+    """A patient as returned by the API."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
