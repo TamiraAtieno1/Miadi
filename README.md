@@ -26,7 +26,7 @@ Miadi (Swahili for "appointment") is a REST API for booking, cancelling and resc
 |---|---|---|
 | **Doctor** | id, name, specialty | 5 seeded for now |
 | **WorkingHours** | id, doctor_id, weekday (0-6), start_time, end_time | One row per doctor per working weekday. Separate from Doctor so hours can differ by day and a doctor can have days off. |
-| **Patient** | id, name, phone, email | No auth in scope (see assumptions) |
+| **Patient** | id, name, phone, email | No auth in scope (see [design notes](docs/design.md#assumptions-ambiguities-i-resolved)) |
 | **Appointment** | id, doctor_id, patient_id, start_time (UTC), end_time (UTC), status (`booked` / `cancelled`), cancel_reason, cancelled_at, created_at, updated_at | Soft-cancelled, never deleted |
 
 ### 1.3 Components
@@ -44,63 +44,16 @@ Client -> Routers (HTTP, validation, status codes)
 - **alembic/**: database migrations
 - **tests/**: unit tests on services plus API tests
 
-### 1.4 Key decisions and trade-offs
+### 1.4 Key decisions at a glance
 
-**Slots are computed, not stored.**
-Availability = the doctor's working hours for that weekday, split into 30-minute slots, minus slots with a `booked` appointment.
-- _Why:_ no slot rows to generate, expire or keep in sync; changing working hours takes effect immediately.
-- _Trade-off:_ availability is computed per request. At this scale that is trivial. At large scale I would cache, or materialise slots in a table.
+- **Slots are computed, not stored:** availability is the doctor's working hours split into 30-minute slots, minus booked ones.
+- **Double-booking is stopped by the database:** a partial unique index on `(doctor_id, start_time) WHERE status = 'booked'`, with the integrity error turned into a 409.
+- **Soft cancel:** cancelling keeps the row (status, reason, timestamp) and frees the slot.
+- **Reschedule is one transaction:** if the new slot is invalid or taken, the original booking is untouched.
+- **UTC in the database, clinic local time (Africa/Nairobi) for working hours.**
+- **PostgreSQL** for production and CI; SQLite only as a local fallback.
 
-**Double-booking is prevented by the database, not only by code.**
-A partial unique index on `(doctor_id, start_time) WHERE status = 'booked'`.
-- _Why:_ checking "is it free?" and then inserting has a race window where two concurrent requests both pass the check. The index makes the second insert fail; I catch the integrity error and return 409.
-- _Bonus:_ because the index only covers `booked` rows, a cancelled slot is bookable again with no extra logic.
-
-**Soft cancel.**
-Cancelling sets `status = cancelled` plus reason and timestamp. This keeps history and audit trail, and frees the slot via the partial index.
-
-**Reschedule is one transaction.**
-Validate the new slot as for a fresh booking, then update the appointment's times in a single transaction. If the new slot is taken or invalid, the original booking stays untouched. Rescheduling updates the existing row rather than creating a new one, so the appointment keeps its identity.
-
-**Times stored in UTC; working hours in clinic local time.**
-Working hours are defined in the clinic's timezone (Africa/Nairobi, EAT, UTC+3) and converted when computing slots. Clients send and receive ISO-8601 timestamps with an offset.
-
-**Status codes.**
-
-| Situation | Code |
-|---|---|
-| Created | 201 |
-| Malformed input, misaligned slot, outside hours, in the past | 422 |
-| Slot already taken, already cancelled, rescheduling a cancelled appointment, cancelling/rescheduling one that has already started, rescheduling to the time it already has | 409 |
-| Unknown doctor / appointment / patient | 404 |
-
-**Database: PostgreSQL.**
-Partial unique indexes, real transactions, and a realistic production path. SQLite would be simpler locally but cannot demonstrate the concurrency guarantee properly.
-
-### 1.5 Assumptions (ambiguities I resolved)
-
-_Decisions I made where the brief was ambiguous._
-
-- Slots start on :00 or :30; anything else is rejected (422).
-- A slot is bookable only if it is not in the past and starts at least 1 hour from now (the bonus rule). Availability hides slots that are no longer bookable, so the list matches exactly what `POST /appointments` will accept.
-- Clients must send timestamps with a UTC offset (e.g. `2026-10-26T09:00:00+03:00`). A timestamp without one is rejected (422) rather than guessed. Responses use clinic local time (+03:00).
-- Patients are identified by id with no authentication; auth is out of scope. `POST /patients` and `GET /doctors` exist only so the API can be tried end to end.
-- A patient may hold several appointments, including at the same time with different doctors (not blocked).
-- Cancelling an already-cancelled appointment returns 409. A cancel reason is required and cannot be blank.
-- Cancelling or rescheduling an appointment that has already started returns 409.
-- Rescheduling keeps the same doctor; moving to the time it already has returns 409.
-- "Upcoming appointments" means booked (not cancelled) appointments that haven't started yet.
-- A doctor with no working-hours row for a weekday doesn't work that day, so availability there is an empty list (200), not an error.
-- Doctors have no leave or holiday handling yet.
-
-### 1.6 How it could grow
-
-- Multiple clinics/locations: add a `Clinic` model and scope doctors and hours to it.
-- Doctor leave and holidays: an `Exception` table overriding WorkingHours.
-- Variable appointment lengths: add duration to appointment types.
-- Auth and roles (patient / receptionist / doctor).
-- Notifications (SMS/email reminders) via a background queue.
-- Caching availability, and read replicas, if read traffic grows.
+The full reasoning and trade-offs, the status code table, every assumption I made where the brief was ambiguous, and how the design could grow are in [docs/design.md](docs/design.md).
 
 ---
 
@@ -183,36 +136,18 @@ curl -X POST "$BASE/appointments" -H "Content-Type: application/json" \
   -d '{"doctor_id": 1, "patient_id": 1, "start_time": "2026-10-26T09:00:00+03:00"}'
 ```
 
+---
+
 ## 3. CI/CD and Deployment
 
 **Public URL:** https://miadi-xw8x.onrender.com
 
-### Branching
-- `develop` is the default branch. Work is integrated and tested here.
-- `prod` is the production branch. A push to `prod` deploys to Render.
-- Each change gets its own short-lived branch (`feat/`, `fix/`, `docs/`, `chore/`, `ci/`, `test/`) and is merged into `develop` through a pull request with a description.
-- To release, I open a pull request from `develop` into `prod` and merge it with a merge commit.
+- **Branches:** `develop` is the default branch where work is integrated and tested; `prod` is production, and a push to it deploys to Render. Every change is a short-lived branch (`feat/`, `fix/`, `docs/`, `chore/`, `ci/`, `test/`) merged into `develop` by pull request. A release is a pull request from `develop` into `prod`.
+- **`ci.yml`** (every pull request and push to `develop`): ruff lint and format check, then the tests against a real PostgreSQL 16 service, with coverage held at 99% or more and reported to Coveralls.
+- **`deploy.yml`** (push to `prod`): runs `ci.yml` first, and only if it passes calls the Render deploy hook. The container applies database migrations before the server starts.
+- **No secrets in the repository:** they live in GitHub Actions secrets and Render environment variables.
 
-### Pipeline (GitHub Actions)
-**`ci.yml`** runs on every pull request, on every push to `develop`, and when called by the deploy workflow:
-1. `ruff check` and `ruff format --check`.
-2. `pytest` against a real PostgreSQL 16 service container, so the partial unique index that prevents double booking is tested on the same engine as production.
-3. Coverage must stay at or above 99% (`fail_under = 99`). The report is uploaded to Coveralls.
-
-**`deploy.yml`** runs on push to `prod`:
-1. Calls `ci.yml`, so the full test suite must pass first.
-2. Only if the tests pass, calls the Render deploy hook, which makes Render pull `prod`, build the Docker image and restart the service.
-
-Render's own auto-deploy is turned off, so a deploy can never skip the tests. The container's `entrypoint.sh` applies database migrations (`alembic upgrade head`) before the server starts.
-
-### Secrets
-No credentials are stored in the repository. The CI database password (`CI_DB_PASSWORD`) and the Render deploy hook URL (`RENDER_DEPLOY_HOOK_URL`) live in GitHub's Actions secrets, and the production `DATABASE_URL` is set as an environment variable in Render.
-
-### Keeping the free tier awake
-Render's free web service spins down after 15 minutes without traffic, so the first request after a quiet period is slow. UptimeRobot calls `/health` every 5 minutes to keep it warm and to alert on downtime.
-
-### Free-tier limits
-The free Render database expires 30 days after creation, so it would need to be recreated or upgraded for real use.
+Details (secrets, keep-alive monitoring, free-tier limits) are in [docs/deployment.md](docs/deployment.md).
 
 ## 4. AI Reflection
 
