@@ -1,5 +1,8 @@
 # Miadi: Clinic Booking API
 
+[![CI](https://github.com/TamiraAtieno1/Miadi/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/TamiraAtieno1/Miadi/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/TamiraAtieno1/Miadi/badge.svg?branch=develop)](https://coveralls.io/github/TamiraAtieno1/Miadi?branch=develop)
+
 Miadi (Swahili for "appointment") is a REST API for booking, cancelling and rescheduling 30-minute appointments at a small clinic (5 doctors), built with FastAPI and PostgreSQL.
 
 **Live URL:** https://miadi-xw8x.onrender.com
@@ -11,7 +14,8 @@ Miadi (Swahili for "appointment") is a REST API for booking, cancelling and resc
 
 ### 1.1 Requirements as I understood them
 
-- Patients view free slots for a doctor on a given date, book one, and cancel.
+- Patients view free slots for a doctor on a given date, book one, cancel, and reschedule it.
+- A patient's upcoming appointments can be listed (bonus).
 - Each doctor has set working hours; appointments are fixed 30-minute slots.
 - A booked slot must never be available to anyone else, even under simultaneous requests.
 - The clinic is small today but should be able to grow.
@@ -33,10 +37,11 @@ Client -> Routers (HTTP, validation, status codes)
        -> Models/DB (SQLAlchemy + PostgreSQL)
 ```
 
-- **routers/**: thin HTTP layer
-- **services/**: all booking logic, so it is testable without HTTP
-- **schemas/**: Pydantic request/response models
-- **models/**: ORM models
+- **routers/**: thin HTTP layer (doctors, appointments, patients)
+- **services/booking.py**: all booking logic, so it is testable without HTTP
+- **schemas.py**: Pydantic request/response models
+- **models.py**: ORM models
+- **alembic/**: database migrations
 - **tests/**: unit tests on services plus API tests
 
 ### 1.4 Key decisions and trade-offs
@@ -113,7 +118,7 @@ source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/acti
 pip install -r requirements-dev.txt
 
 # Optional: use Postgres (recommended, matches production). See .env.example for the format.
-export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/clinic
+export DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic
 
 alembic upgrade head               # create/update the tables
 uvicorn app.main:app --reload      # http://localhost:8000/docs
@@ -145,7 +150,7 @@ ruff check . && ruff format --check .
 ```
 The concurrency test only runs when `DATABASE_URL` points at Postgres:
 ```bash
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/clinic_test pytest -q
+DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic_test pytest -q
 ```
 Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of tables.
 
@@ -154,3 +159,61 @@ Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of table
 |---|---|---|
 | `DATABASE_URL` | Database connection string (`postgres://` and `postgresql://` are both accepted) | `sqlite:///./clinic.db` |
 | `PORT` | Port the container listens on | `8000` |
+
+### API summary
+
+| Endpoint | What it does | Success | Errors |
+|---|---|---|---|
+| `GET /doctors/{id}/availability?date=YYYY-MM-DD` | Free 30-minute slots for the doctor on that clinic-local date | 200 | 404 unknown doctor, 422 bad date |
+| `POST /appointments` | Book a slot (`doctor_id`, `patient_id`, `start_time`) | 201 | 404, 409 slot taken, 422 invalid slot |
+| `PATCH /appointments/{id}/cancel` | Cancel with a `reason`; the slot becomes bookable again | 200 | 404, 409 already cancelled or started, 422 missing reason |
+| `PATCH /appointments/{id}/reschedule` | Move to a new `start_time` (same doctor) | 200 | 404, 409 cancelled / slot taken / same time, 422 invalid slot |
+| `GET /patients/{id}/appointments` _(bonus)_ | Upcoming booked appointments, soonest first | 200 | 404 |
+| `GET /doctors`, `POST /patients` _(extras)_ | List doctors with their hours; create a patient | 200 / 201 | 422 |
+
+Every expected failure has the same shape, e.g. `{"detail": "That slot is already booked.", "code": "slot_unavailable"}`.
+Seeded data: doctors with ids 1-5 and one patient with id 1. Interactive docs are at `/docs`.
+
+Try it (use a future weekday for the date):
+
+```bash
+BASE=https://miadi-xw8x.onrender.com
+curl "$BASE/doctors/1/availability?date=2026-10-26"
+curl -X POST "$BASE/appointments" -H "Content-Type: application/json" \
+  -d '{"doctor_id": 1, "patient_id": 1, "start_time": "2026-10-26T09:00:00+03:00"}'
+```
+
+## 3. CI/CD and Deployment
+
+**Public URL:** https://miadi-xw8x.onrender.com
+
+### Branching
+- `develop` is the default branch. Work is integrated and tested here.
+- `prod` is the production branch. A push to `prod` deploys to Render.
+- Each change gets its own short-lived branch (`feat/`, `fix/`, `docs/`, `chore/`, `ci/`, `test/`) and is merged into `develop` through a pull request with a description.
+- To release, I open a pull request from `develop` into `prod` and merge it with a merge commit.
+
+### Pipeline (GitHub Actions)
+**`ci.yml`** runs on every pull request, on every push to `develop`, and when called by the deploy workflow:
+1. `ruff check` and `ruff format --check`.
+2. `pytest` against a real PostgreSQL 16 service container, so the partial unique index that prevents double booking is tested on the same engine as production.
+3. Coverage must stay at or above 99% (`fail_under = 99`). The report is uploaded to Coveralls.
+
+**`deploy.yml`** runs on push to `prod`:
+1. Calls `ci.yml`, so the full test suite must pass first.
+2. Only if the tests pass, calls the Render deploy hook, which makes Render pull `prod`, build the Docker image and restart the service.
+
+Render's own auto-deploy is turned off, so a deploy can never skip the tests. The container's `entrypoint.sh` applies database migrations (`alembic upgrade head`) before the server starts.
+
+### Secrets
+No credentials are stored in the repository. The CI database password (`CI_DB_PASSWORD`) and the Render deploy hook URL (`RENDER_DEPLOY_HOOK_URL`) live in GitHub's Actions secrets, and the production `DATABASE_URL` is set as an environment variable in Render.
+
+### Keeping the free tier awake
+Render's free web service spins down after 15 minutes without traffic, so the first request after a quiet period is slow. UptimeRobot calls `/health` every 5 minutes to keep it warm and to alert on downtime.
+
+### Free-tier limits
+The free Render database expires 30 days after creation, so it would need to be recreated or upgraded for real use.
+
+## 4. AI Reflection
+
+_(Write this yourself from your own notes: what you asked an AI to help with, what helped, and what was wrong or needed fixing.)_
