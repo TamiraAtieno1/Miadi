@@ -35,6 +35,7 @@ MIN_NOTICE = timedelta(hours=1)
 
 
 def get_doctor(db: Session, doctor_id: int) -> Doctor:
+    """Return the doctor or raise `NotFoundError`."""
     doctor = db.get(Doctor, doctor_id)
     if doctor is None:
         raise NotFoundError(f"Doctor {doctor_id} not found.")
@@ -42,6 +43,7 @@ def get_doctor(db: Session, doctor_id: int) -> Doctor:
 
 
 def get_patient(db: Session, patient_id: int) -> Patient:
+    """Return the patient or raise `NotFoundError`."""
     patient = db.get(Patient, patient_id)
     if patient is None:
         raise NotFoundError(f"Patient {patient_id} not found.")
@@ -49,6 +51,7 @@ def get_patient(db: Session, patient_id: int) -> Patient:
 
 
 def get_appointment(db: Session, appointment_id: int) -> Appointment:
+    """Return the appointment or raise `NotFoundError`."""
     appointment = db.get(Appointment, appointment_id)
     if appointment is None:
         raise NotFoundError(f"Appointment {appointment_id} not found.")
@@ -56,6 +59,7 @@ def get_appointment(db: Session, appointment_id: int) -> Appointment:
 
 
 def _working_hours(db: Session, doctor_id: int, weekday: int) -> WorkingHours | None:
+    """The doctor's working hours for a weekday (0 = Monday), or None if they are off."""
     return db.scalar(
         select(WorkingHours).where(
             WorkingHours.doctor_id == doctor_id, WorkingHours.weekday == weekday
@@ -118,6 +122,12 @@ def book_appointment(
     start_time: datetime,
     now: datetime | None = None,
 ) -> Appointment:
+    """Book a slot for a patient.
+
+    Raises `NotFoundError` for an unknown doctor or patient, `InvalidSlotError`
+    for a slot that is not bookable and `SlotUnavailableError` if it is taken,
+    including when another request wins a race for the same slot.
+    """
     now = now or utcnow()
     get_doctor(db, doctor_id)
     get_patient(db, patient_id)
@@ -145,6 +155,10 @@ def book_appointment(
 def cancel_appointment(
     db: Session, appointment_id: int, reason: str, now: datetime | None = None
 ) -> Appointment:
+    """Cancel an appointment (soft delete), which frees its slot.
+
+    Raises `InvalidStateError` if it is already cancelled or has already started.
+    """
     now = now or utcnow()
     appointment = get_appointment(db, appointment_id)
 

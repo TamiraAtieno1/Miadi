@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 
 def _database_url() -> str:
+    """Read DATABASE_URL (default: local SQLite) and name the psycopg2 driver for Postgres."""
     url = os.environ.get("DATABASE_URL", "sqlite:///./clinic.db")
     # Render/Heroku-style URLs use "postgres://", which SQLAlchemy rejects.
     # Also name the driver explicitly: a bare "postgresql://" may default to
@@ -34,7 +35,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 class Base(DeclarativeBase):
-    pass
+    """Declarative base class that all ORM models inherit from."""
 
 
 def get_db():
