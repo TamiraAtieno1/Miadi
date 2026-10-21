@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app import models  # noqa: F401  (registers tables on Base.metadata)
-from app.database import Base, SessionLocal, engine
+from app.database import SessionLocal
 from app.errors import BookingError
 from app.routers import appointments, doctors, patients
 from app.seed import seed_if_empty
@@ -12,8 +12,7 @@ from app.seed import seed_if_empty
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Simple for this scope; a real deployment would use Alembic migrations.
-    Base.metadata.create_all(bind=engine)
+    # The schema is managed by Alembic (`alembic upgrade head`, run by entrypoint.sh).
     with SessionLocal() as db:
         seed_if_empty(db)
     yield
@@ -40,6 +39,7 @@ app.include_router(appointments.router)
 app.include_router(patients.router)
 
 
-@app.get("/health", tags=["meta"])
+# Uptime monitors (e.g. UptimeRobot's free plan) probe with HEAD, so allow it as well as GET.
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["meta"])
 def health() -> dict:
     return {"status": "ok"}

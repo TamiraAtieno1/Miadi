@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models import STATUS_BOOKED, STATUS_CANCELLED, Appointment, Doctor, Patient
 
 # 09:00 EAT (06:00 UTC) on a Monday.
-SLOT = datetime(2030, 1, 7, 6, 0, tzinfo=timezone.utc)
+SLOT = datetime(2030, 1, 7, 6, 0, tzinfo=UTC)
 
 
 def _make_people(db):

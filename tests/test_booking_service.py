@@ -5,7 +5,7 @@ Reference calendar: 2030-01-04 is a Friday, so 7 Jan is a Monday and 5 Jan a
 Saturday. The test doctor works Mon-Fri 09:00-17:00 clinic time (EAT).
 """
 
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
 
 import pytest
@@ -20,7 +20,7 @@ from app.models import STATUS_BOOKED, STATUS_CANCELLED, Doctor, Patient, Working
 from app.services import booking
 from app.timeutils import CLINIC_TZ, as_utc
 
-NOW = datetime(2030, 1, 4, 9, 0, tzinfo=timezone.utc)  # Friday
+NOW = datetime(2030, 1, 4, 9, 0, tzinfo=UTC)  # Friday
 MON, TUE, SAT = 7, 8, 5
 
 
@@ -33,8 +33,7 @@ def local(day: int, hour: int, minute: int = 0) -> datetime:
 def world(db):
     doctor = Doctor(name="Dr. Test")
     doctor.working_hours = [
-        WorkingHours(weekday=d, start_time=time(9, 0), end_time=time(17, 0))
-        for d in range(5)
+        WorkingHours(weekday=d, start_time=time(9, 0), end_time=time(17, 0)) for d in range(5)
     ]
     one, two = Patient(name="Pat One"), Patient(name="Pat Two")
     db.add_all([doctor, one, two])
@@ -43,9 +42,7 @@ def world(db):
 
 
 def book(db, world, start, patient=None, now=NOW):
-    return booking.book_appointment(
-        db, world.doctor.id, (patient or world.p1).id, start, now=now
-    )
+    return booking.book_appointment(db, world.doctor.id, (patient or world.p1).id, start, now=now)
 
 
 # --- booking ---------------------------------------------------------------
@@ -54,7 +51,7 @@ def book(db, world, start, patient=None, now=NOW):
 def test_books_a_valid_slot(db, world):
     appt = book(db, world, local(MON, 9))
     assert appt.status == STATUS_BOOKED
-    assert as_utc(appt.start_time) == local(MON, 9).astimezone(timezone.utc)
+    assert as_utc(appt.start_time) == local(MON, 9).astimezone(UTC)
     assert (as_utc(appt.end_time) - as_utc(appt.start_time)).seconds == 30 * 60
 
 
@@ -69,7 +66,7 @@ def test_rejects_slots_not_on_the_half_hour(db, world, hour, minute):
 
 
 def test_rejects_slots_in_the_past(db, world):
-    later = datetime(2030, 1, 8, 0, 0, tzinfo=timezone.utc)
+    later = datetime(2030, 1, 8, 0, 0, tzinfo=UTC)
     with pytest.raises(InvalidSlotError, match="past"):
         book(db, world, local(MON, 9), now=later)
 
@@ -104,9 +101,7 @@ def test_rejects_a_slot_that_is_already_taken(db, world):
 
 def test_same_time_with_a_different_doctor_is_fine(db, world):
     other = Doctor(name="Dr. Other")
-    other.working_hours = [
-        WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))
-    ]
+    other.working_hours = [WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))]
     db.add(other)
     db.commit()
 
@@ -123,9 +118,7 @@ def test_database_constraint_backs_up_the_application_check(db, world, monkeypat
     start = local(MON, 9)
     book(db, world, start)
 
-    monkeypatch.setattr(
-        booking, "validate_slot", lambda db, doctor_id, start, now: as_utc(start)
-    )
+    monkeypatch.setattr(booking, "validate_slot", lambda db, doctor_id, start, now: as_utc(start))
     with pytest.raises(SlotUnavailableError, match="just taken"):
         book(db, world, start, patient=world.p2)
 
@@ -181,8 +174,8 @@ def test_reschedule_moves_the_appointment_and_frees_the_old_slot(db, world):
     moved = booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
 
     assert moved.id == appt.id
-    assert as_utc(moved.start_time) == local(MON, 10).astimezone(timezone.utc)
-    assert as_utc(moved.end_time) == local(MON, 10, 30).astimezone(timezone.utc)
+    assert as_utc(moved.start_time) == local(MON, 10).astimezone(UTC)
+    assert as_utc(moved.end_time) == local(MON, 10, 30).astimezone(UTC)
 
     # Old slot is available again.
     book(db, world, local(MON, 9), patient=world.p2)
@@ -196,7 +189,7 @@ def test_reschedule_to_a_taken_slot_leaves_the_original_untouched(db, world):
         booking.reschedule_appointment(db, mine.id, local(MON, 10), now=NOW)
 
     db.refresh(mine)
-    assert as_utc(mine.start_time) == local(MON, 9).astimezone(timezone.utc)
+    assert as_utc(mine.start_time) == local(MON, 9).astimezone(UTC)
     assert mine.status == STATUS_BOOKED
 
 
@@ -207,7 +200,7 @@ def test_reschedule_validates_like_a_fresh_booking(db, world):
             booking.reschedule_appointment(db, appt.id, bad, now=NOW)
 
     db.refresh(appt)
-    assert as_utc(appt.start_time) == local(MON, 9).astimezone(timezone.utc)
+    assert as_utc(appt.start_time) == local(MON, 9).astimezone(UTC)
 
 
 def test_cannot_reschedule_a_cancelled_appointment(db, world):
@@ -226,6 +219,31 @@ def test_rescheduling_to_the_same_slot_is_rejected(db, world):
 def test_reschedule_unknown_appointment(db, world):
     with pytest.raises(NotFoundError):
         booking.reschedule_appointment(db, 999, local(MON, 10), now=NOW)
+
+
+def test_cannot_reschedule_an_appointment_that_already_started(db, world):
+    appt = book(db, world, local(MON, 9))
+    with pytest.raises(InvalidStateError, match="already started"):
+        booking.reschedule_appointment(db, appt.id, local(MON, 10), now=local(MON, 9, 30))
+
+
+def test_reschedule_race_is_caught_by_the_database_constraint(db, world, monkeypatch):
+    """Two clients move into the same free slot at once.
+
+    The 'is it free?' check is bypassed to simulate both passing it; only the
+    partial unique index can stop the second one. The service must report a
+    clean conflict and leave the original booking untouched.
+    """
+    mine = book(db, world, local(MON, 9))
+    book(db, world, local(MON, 10), patient=world.p2)
+
+    monkeypatch.setattr(booking, "validate_slot", lambda db, doctor_id, start, now: as_utc(start))
+    with pytest.raises(SlotUnavailableError, match="just taken"):
+        booking.reschedule_appointment(db, mine.id, local(MON, 10), now=NOW)
+
+    db.refresh(mine)
+    assert as_utc(mine.start_time) == local(MON, 9).astimezone(UTC)
+    assert mine.status == STATUS_BOOKED
 
 
 # --- availability ----------------------------------------------------------

@@ -5,3 +5,8 @@ venv/
 .env
 clinic.db
 .pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage.lcov
+htmlcov/

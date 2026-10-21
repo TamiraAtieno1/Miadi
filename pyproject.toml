@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: import sorting, B: bugbear, UP: modern syntax
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection style puts calls in default arguments on purpose:
+#   def endpoint(db: Session = Depends(get_db))
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# Report paths relative to the repo root (app/services/booking.py) so Coveralls
+# can match them to files in GitHub.
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 99

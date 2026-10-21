@@ -9,7 +9,7 @@ have passed that check. From that point only the database's partial unique
 index can stop the extra inserts. Remove the index and this test fails.
 """
 
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 from threading import Barrier, Thread
 
 import pytest
@@ -25,16 +25,14 @@ pytestmark = pytest.mark.skipif(
     reason="needs concurrent connections (Postgres)",
 )
 
-NOW = datetime(2030, 1, 4, 9, 0, tzinfo=timezone.utc)
+NOW = datetime(2030, 1, 4, 9, 0, tzinfo=UTC)
 SLOT = datetime(2030, 1, 7, 9, 0, tzinfo=CLINIC_TZ)  # Monday 09:00 clinic time
 CLIENTS = 10
 
 
 def test_only_one_of_many_simultaneous_bookings_wins(db, monkeypatch):
     doctor = Doctor(name="Dr. Race")
-    doctor.working_hours = [
-        WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))
-    ]
+    doctor.working_hours = [WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))]
     patients = [Patient(name=f"Patient {i}") for i in range(CLIENTS)]
     db.add_all([doctor, *patients])
     db.commit()

@@ -1,4 +1,4 @@
-from datetime import datetime, time, timezone
+from datetime import UTC, datetime, time
 
 from sqlalchemy import (
     DateTime,
@@ -19,7 +19,7 @@ STATUS_CANCELLED = "cancelled"
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Doctor(Base):
@@ -83,9 +83,7 @@ class Appointment(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default=STATUS_BOOKED)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
