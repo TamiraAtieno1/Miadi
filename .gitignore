@@ -10,3 +10,5 @@ clinic.db
 coverage.xml
 coverage.lcov
 htmlcov/
+*.egg-info/
+build/
