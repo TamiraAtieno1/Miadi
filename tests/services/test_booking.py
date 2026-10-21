@@ -10,7 +10,7 @@ from app.errors import (
     SlotUnavailableError,
 )
 from app.models import STATUS_BOOKED, Doctor, WorkingHours
-from app.services import booking
+from app.services import booking, lookups
 from app.timeutils import as_utc
 from tests.services.helpers import MON, NOW, SAT, book, local
 
@@ -90,7 +90,7 @@ def test_database_constraint_backs_up_the_application_check(db, world, monkeypat
         book(db, world, start, patient=world.p2)
 
     # The session is still usable after the failed insert.
-    assert booking.get_doctor(db, world.doctor.id) is not None
+    assert lookups.get_doctor(db, world.doctor.id) is not None
 
 
 def test_unknown_doctor_or_patient(db, world):

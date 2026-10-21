@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Patient
 from app.schemas import AppointmentOut, PatientCreate, PatientOut
-from app.services import booking
+from app.services import availability
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -26,4 +26,4 @@ def create_patient(body: PatientCreate, db: Session = Depends(get_db)):
 )
 def upcoming_appointments(patient_id: int, db: Session = Depends(get_db)):
     """List a patient's booked appointments that have not started yet."""
-    return booking.list_upcoming_for_patient(db, patient_id)
+    return availability.list_upcoming_for_patient(db, patient_id)
