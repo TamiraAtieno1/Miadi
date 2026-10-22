@@ -12,8 +12,9 @@ WORKDIR /code
 # The app may write its local SQLite file here when no DATABASE_URL is set.
 RUN chown appuser:appuser /code
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# The locked file: the image gets the same versions that CI tested.
+COPY requirements/base.txt requirements/base.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
 
 COPY --chown=appuser:appuser app ./app
 COPY --chown=appuser:appuser alembic.ini .

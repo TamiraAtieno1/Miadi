@@ -63,6 +63,7 @@ The full reasoning and trade-offs, the status code table, every assumption I mad
 
 ### Prerequisites
 - Python 3.12+
+- Dependencies install from the locked files in `requirements/` (exact versions, the same ones CI and Docker use). See [requirements/README.md](requirements/README.md) to add or upgrade one.
 - Optional: PostgreSQL 16 (or Docker). Without a `DATABASE_URL` the app falls back to a local SQLite file, which is fine for a quick look but is not what production runs.
 
 ### Option A: run with Python
@@ -70,7 +71,7 @@ The full reasoning and trade-offs, the status code table, every assumption I mad
 git clone https://github.com/TamiraAtieno1/Miadi.git && cd Miadi
 python -m venv .venv
 source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 
 # Optional: use Postgres (recommended, matches production). See .env.example for the format.
 export DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic
