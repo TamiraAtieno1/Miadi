@@ -14,6 +14,7 @@ def test_reschedule_moves_the_appointment(client):
     )
     assert response.status_code == 200
     assert datetime.fromisoformat(response.json()["start_time"]) == new
+    assert response.json()["status"] == "rescheduled"
 
     slots = client.get(f"/doctors/1/availability?date={old.date().isoformat()}")
     assert old in starts(slots)

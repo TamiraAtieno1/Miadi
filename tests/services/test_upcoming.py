@@ -20,6 +20,14 @@ def test_upcoming_are_sorted_and_exclude_cancelled_and_other_patients(db, world)
     assert [a.id for a in upcoming] == [sooner.id, later.id]
 
 
+def test_upcoming_includes_rescheduled_appointments(db, world):
+    moved = book(db, world, local(MON, 9))
+    booking.reschedule_appointment(db, moved.id, local(MON, 11), now=NOW)
+
+    upcoming = availability.list_upcoming_for_patient(db, world.p1.id, now=NOW)
+    assert [a.id for a in upcoming] == [moved.id]
+
+
 def test_upcoming_excludes_appointments_already_started(db, world):
     book(db, world, local(MON, 9))
     kept = book(db, world, local(MON, 14))

@@ -3,7 +3,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.models import STATUS_BOOKED, STATUS_CANCELLED, Appointment, Doctor, Patient
+from app.models import (
+    STATUS_BOOKED,
+    STATUS_CANCELLED,
+    STATUS_RESCHEDULED,
+    Appointment,
+    Doctor,
+    Patient,
+)
 
 # 09:00 EAT (06:00 UTC) on a Monday.
 SLOT = datetime(2030, 1, 7, 6, 0, tzinfo=UTC)
@@ -56,3 +63,14 @@ def test_many_cancelled_rows_may_share_a_slot(db):
         ]
     )
     db.commit()  # must not raise
+
+
+def test_database_rejects_booking_over_a_rescheduled_appointment(db):
+    doctor, patient = _make_people(db)
+    db.add(_appt(doctor, patient, status=STATUS_RESCHEDULED))
+    db.commit()
+
+    db.add(_appt(doctor, patient, status=STATUS_BOOKED))
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
