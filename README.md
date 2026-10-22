@@ -26,7 +26,7 @@ Miadi (Swahili for "appointment") is a REST API for booking, cancelling and resc
 |---|---|---|
 | **Doctor** | id, name, specialty | 5 seeded for now |
 | **WorkingHours** | id, doctor_id, weekday (0-6), start_time, end_time | One row per doctor per working weekday. Separate from Doctor so hours can differ by day and a doctor can have days off. |
-| **Patient** | id, name, phone, email | No auth in scope (see [design notes](docs/design.md#assumptions-ambiguities-i-resolved)) |
+| **Patient** | id, name, phone, email | Can have a login (see [web pages](docs/web-pages.md)); the JSON API itself has no auth |
 | **Appointment** | id, doctor_id, patient_id, start_time (UTC), end_time (UTC), status (`booked` / `rescheduled` / `cancelled`), cancel_reason, cancelled_at, created_at, updated_at | Soft-cancelled, never deleted |
 
 ### 1.3 Components
@@ -79,7 +79,7 @@ export DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic
 alembic upgrade head               # create/update the tables
 uvicorn app.main:app --reload      # http://localhost:8000/docs
 ```
-`python -m app.seed` adds 5 doctors (Mon-Fri, 09:00-17:00 EAT) and one demo patient if the database has no doctors. It is safe to run again, and in Docker it runs automatically when the container starts.
+`python -m app.seed` adds 5 doctors (Mon-Fri, 09:00-17:00 EAT) and one demo patient if the database has no doctors, and creates demo logins for the admin, each doctor and the patient (see [docs/web-pages.md](docs/web-pages.md)). It is safe to run again, and in Docker it runs automatically when the container starts.
 
 ### Option B: run with Docker
 ```bash
@@ -116,6 +116,12 @@ Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of table
 |---|---|---|
 | `DATABASE_URL` | Database connection string (`postgres://` and `postgresql://` are both accepted) | `sqlite:///./clinic.db` |
 | `PORT` | Port the container listens on | `8000` |
+| `SECRET_KEY` | Signs the sign-in cookie of the web pages. Set it in production, or everyone is signed out whenever the app restarts | random per start |
+| `SECURE_COOKIES` | `1` on HTTPS so the cookie is never sent over plain HTTP | off |
+| `DEMO_PASSWORD` | Password of the demo accounts created by `python -m app.seed` | `miadi-demo` |
+| `SHOW_DEMO_LOGINS` | `0` hides the demo accounts box on the sign-in page | shown |
+
+The browser pages, roles and demo accounts are described in [docs/web-pages.md](docs/web-pages.md).
 
 ### API summary
 
