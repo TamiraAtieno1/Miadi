@@ -1,31 +1,16 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app import models  # noqa: F401  (registers tables on Base.metadata)
-from app.database import SessionLocal
 from app.errors import BookingError
 from app.routers import appointments, doctors, patients
-from app.seed import seed_if_empty
 from app.validation import describe_errors
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Seed demo data on startup if the database is empty."""
-    # The schema is managed by Alembic (`alembic upgrade head`, run by entrypoint.sh).
-    with SessionLocal() as db:
-        seed_if_empty(db)
-    yield
-
 
 app = FastAPI(
     title="Miadi: Clinic Booking API",
     description="Book, cancel and reschedule 30-minute clinic appointments.",
     version="0.1.0",
-    lifespan=lifespan,
 )
 
 
