@@ -35,6 +35,26 @@ Working hours are defined in the clinic's timezone (Africa/Nairobi, EAT, UTC+3) 
 **Database: PostgreSQL.**
 Partial unique indexes, real transactions, and a realistic production path. SQLite would be simpler locally but cannot demonstrate the concurrency guarantee properly.
 
+## Rules enforced by the database
+
+Checking a rule in application code is not enough: another script, a future endpoint or a manual fix could write bad data. These rules are therefore also constraints, added by migration `0005` and named so a failure says which rule broke.
+
+| Rule | Constraint |
+|---|---|
+| One active appointment per doctor per start time | partial unique index `uq_active_slot` |
+| Appointment status is `booked`, `rescheduled` or `cancelled` | `ck_appointments_status` (an unknown status would otherwise fall outside the index above and hold no slot) |
+| Every appointment lasts exactly 30 minutes | `ck_appointments_duration` (`end_time - start_time`) |
+| Weekday is 0-6 | `ck_working_hours_weekday` |
+| Working hours end after they start | `ck_working_hours_order` |
+| A doctor's email is unique and required | `uq_doctors_email` |
+| A patient's email is unique when present | `uq_patients_email` (several patients may have none) |
+| A login matches its role: admin links to nothing, doctor to a doctor, patient to a patient | `ck_users_role_link` |
+
+- Emails are stored in lower case, so `Pat@Example.com` and `pat@example.com` are the same address.
+- The code only reports "slot taken" for `uq_active_slot`, and "email already used" for `uq_patients_email`. Any other integrity failure is a different problem and is not disguised.
+- The migration tidies what it safely can (gives each existing doctor an email, lower-cases patient emails and clears the address from later patients that share one) and stops with a clear message if other existing rows break a new rule, so nothing is changed half way on PostgreSQL.
+- `end_time` is still stored, which keeps overlap queries simple, but the database now guarantees it can never disagree with `start_time`.
+
 ## Assumptions (ambiguities I resolved)
 
 _Decisions I made where the brief was ambiguous._
