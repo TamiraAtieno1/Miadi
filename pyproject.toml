@@ -8,8 +8,10 @@ version = "0.1.0"
 description = "Miadi: a clinic appointment booking REST API (FastAPI + PostgreSQL)."
 readme = "README.md"
 requires-python = ">=3.12"
-# Runtime dependencies. requirements.txt mirrors this list for Docker and Render;
-# tests/test_dependencies.py fails if the two ever drift apart.
+# Runtime dependencies, as loose ranges. This file is the source of truth: the exact
+# versions that CI, Docker and Render install are locked in requirements/ (see
+# requirements/README.md). tests/project/test_dependencies.py fails if the lock
+# files fall out of step with this list.
 dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
