@@ -63,6 +63,7 @@ The full reasoning and trade-offs, the status code table, every assumption I mad
 
 ### Prerequisites
 - Python 3.12+
+- Dependencies install from the locked files in `requirements/` (exact versions, the same ones CI and Docker use). See [requirements/README.md](requirements/README.md) to add or upgrade one.
 - Optional: PostgreSQL 16 (or Docker). Without a `DATABASE_URL` the app falls back to a local SQLite file, which is fine for a quick look but is not what production runs.
 
 ### Option A: run with Python
@@ -70,7 +71,7 @@ The full reasoning and trade-offs, the status code table, every assumption I mad
 git clone https://github.com/TamiraAtieno1/Miadi.git && cd Miadi
 python -m venv .venv
 source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 
 # Optional: use Postgres (recommended, matches production). See .env.example for the format.
 export DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic
@@ -78,7 +79,7 @@ export DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic
 alembic upgrade head               # create/update the tables
 uvicorn app.main:app --reload      # http://localhost:8000/docs
 ```
-On first start the app seeds 5 doctors (Mon-Fri, 09:00-17:00 EAT) and one demo patient if the database is empty.
+`python -m app.seed` adds 5 doctors (Mon-Fri, 09:00-17:00 EAT) and one demo patient if the database has no doctors. It is safe to run again, and in Docker it runs automatically when the container starts.
 
 ### Option B: run with Docker
 ```bash
@@ -91,6 +92,7 @@ The container starts through `entrypoint.sh`, which applies migrations (`alembic
 The schema is managed with Alembic; migration files live in `alembic/versions/`. The database URL comes from `DATABASE_URL`.
 ```bash
 alembic upgrade head                                   # apply all migrations
+python -m app.seed                 # add the demo doctors and patient (safe to repeat)
 alembic downgrade -1                                   # undo the last one
 alembic revision --autogenerate -m "describe change"   # after editing app/models.py
 ```

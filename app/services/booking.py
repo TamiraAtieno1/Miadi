@@ -5,6 +5,7 @@ be tested without HTTP. These functions change the database.
 """
 
 from datetime import datetime
+from typing import NoReturn
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -24,6 +25,33 @@ from app.models import (
 from app.services.lookups import get_appointment, get_doctor, get_patient
 from app.services.slots import SLOT_LENGTH, validate_slot
 from app.timeutils import as_utc, utcnow
+
+SLOT_INDEX = "uq_active_slot"
+# SQLite does not name the index in its error, only the columns it covers.
+SQLITE_SLOT_COLUMNS = "appointments.doctor_id, appointments.start_time"
+
+
+def is_slot_conflict(error: IntegrityError) -> bool:
+    """True only when the error is the "one active appointment per doctor per time" index."""
+    diagnostics = getattr(error.orig, "diag", None)  # PostgreSQL names the violated index
+    if diagnostics is not None:
+        return diagnostics.constraint_name == SLOT_INDEX
+    return SQLITE_SLOT_COLUMNS in str(error.orig)
+
+
+def _report_integrity_error(db: Session, error: IntegrityError) -> NoReturn:
+    """Roll back, then explain the failure.
+
+    A clash on the active-slot index means someone else got the slot first. Any other
+    integrity failure (a missing doctor, a check constraint) is a different problem, so
+    it is raised unchanged rather than blamed on a taken slot.
+    """
+    db.rollback()
+    if is_slot_conflict(error):
+        raise SlotUnavailableError(
+            "Sorry, that slot was just taken by someone else. Please choose another time."
+        ) from error
+    raise error
 
 
 def _commit_or_report_concurrent_change(db: Session) -> None:
@@ -72,10 +100,7 @@ def book_appointment(
     except IntegrityError as error:
         # Two requests passed the check at the same moment; the partial unique
         # index let exactly one through.
-        db.rollback()
-        raise SlotUnavailableError(
-            "Sorry, that slot was just taken by someone else. Please choose another time."
-        ) from error
+        _report_integrity_error(db, error)
     db.refresh(appointment)
     return appointment
 
@@ -142,9 +167,6 @@ def reschedule_appointment(
     try:
         _commit_or_report_concurrent_change(db)
     except IntegrityError as error:
-        db.rollback()
-        raise SlotUnavailableError(
-            "Sorry, that slot was just taken by someone else. Please choose another time."
-        ) from error
+        _report_integrity_error(db, error)
     db.refresh(appointment)
     return appointment
