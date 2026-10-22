@@ -30,3 +30,37 @@ def test_create_patient_and_list_doctors(client):
     assert doctors.status_code == 200
     assert len(doctors.json()) == 5
     assert len(doctors.json()[0]["working_hours"]) == 5
+
+
+def test_two_patients_cannot_share_an_email(client):
+    body = {"name": "Wanjiku", "email": "wanjiku@example.com"}
+    assert client.post("/patients", json=body).status_code == 201
+
+    again = client.post("/patients", json={**body, "name": "Someone Else"})
+
+    assert again.status_code == 409
+    assert again.json() == {
+        "detail": "A patient with that email address already exists.",
+        "code": "email_taken",
+    }
+
+
+def test_emails_are_compared_without_regard_to_case_or_spaces(client):
+    client.post("/patients", json={"name": "A", "email": "Mixed@Example.com"})
+
+    again = client.post("/patients", json={"name": "B", "email": "  mixed@example.COM "})
+
+    assert again.status_code == 409
+
+
+def test_a_patient_email_is_stored_in_lower_case(client):
+    created = client.post("/patients", json={"name": "A", "email": " Mixed@Example.com "})
+
+    assert created.json()["email"] == "mixed@example.com"
+
+
+def test_patients_without_an_email_can_be_created_repeatedly(client):
+    for body in ({"name": "One"}, {"name": "Two", "email": None}, {"name": "Three", "email": " "}):
+        response = client.post("/patients", json=body)
+        assert response.status_code == 201
+        assert response.json()["email"] is None

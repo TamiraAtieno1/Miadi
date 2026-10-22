@@ -54,7 +54,7 @@ def test_upgrade_adopts_a_database_created_before_alembic(alembic_cfg):
     command.upgrade(cfg, "head")  # must not fail with "table already exists"
 
     with engine.connect() as conn:
-        assert MigrationContext.configure(conn).get_current_revision() == "0004"
+        assert MigrationContext.configure(conn).get_current_revision() == "0005"
     engine.dispose()
 
 
@@ -69,8 +69,15 @@ def _insert_appointment(conn, status, doctor_id=1):
     )
 
 
-def _seed_people(conn):
-    conn.execute(sa.text("INSERT INTO doctors (name, specialty) VALUES ('Dr. T', 'GP')"))
+def _seed_people(conn, doctor_email=None):
+    """Insert one doctor and one patient. Doctors only have an email from revision 0005 on."""
+    if doctor_email:
+        conn.execute(
+            sa.text("INSERT INTO doctors (name, specialty, email) VALUES ('Dr. T', 'GP', :email)"),
+            {"email": doctor_email},
+        )
+    else:
+        conn.execute(sa.text("INSERT INTO doctors (name, specialty) VALUES ('Dr. T', 'GP')"))
     conn.execute(sa.text("INSERT INTO patients (name) VALUES ('Pat T')"))
 
 
@@ -96,7 +103,7 @@ def test_downgrade_turns_rescheduled_appointments_back_into_booked(alembic_cfg):
     command.upgrade(cfg, "head")
     engine = sa.create_engine(url)
     with engine.begin() as conn:
-        _seed_people(conn)
+        _seed_people(conn, doctor_email="t@example.com")
         _insert_appointment(conn, "rescheduled")
 
     command.downgrade(cfg, "0001")

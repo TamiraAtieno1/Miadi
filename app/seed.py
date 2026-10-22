@@ -47,7 +47,7 @@ def seed_if_empty(db: Session) -> None:
         return
 
     for name, specialty in DOCTORS:
-        doctor = Doctor(name=name, specialty=specialty)
+        doctor = Doctor(name=name, specialty=specialty, email=doctor_email(name))
         # Mon-Fri 09:00-17:00 clinic local time; weekends off.
         doctor.working_hours = [
             WorkingHours(weekday=day, start_time=time(9, 0), end_time=time(17, 0))
@@ -75,7 +75,7 @@ def seed_users_if_missing(db: Session) -> None:
     password = demo_password()
     ensure_user(db, ADMIN_EMAIL, password, ROLE_ADMIN)
     for doctor in db.scalars(select(Doctor).order_by(Doctor.id)):
-        ensure_user(db, doctor_email(doctor.name), password, ROLE_DOCTOR, doctor_id=doctor.id)
+        ensure_user(db, doctor.email, password, ROLE_DOCTOR, doctor_id=doctor.id)
     demo = db.scalar(select(Patient).where(Patient.email == "demo@example.com"))
     if demo is not None:
         ensure_user(db, demo.email, password, ROLE_PATIENT, patient_id=demo.id)

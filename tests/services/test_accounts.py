@@ -70,3 +70,12 @@ def test_ensure_user_tolerates_a_parallel_seeder_creating_the_same_account(db, m
     monkeypatch.setattr(db, "scalar", lambda *args, **kwargs: None)
 
     assert accounts.ensure_user(db, "admin@example.com", "pw-123456", "admin") is False
+
+
+def test_register_refuses_an_email_already_on_a_patient_record_made_through_the_api(db):
+    """Signing up must not hand a stranger a patient record that someone else created."""
+    db.add(Patient(name="Created By Clinic", email="walkin@example.com"))
+    db.commit()
+
+    with pytest.raises(EmailTakenError):
+        accounts.register_patient(db, "Someone Else", "walkin@example.com", "longenough")

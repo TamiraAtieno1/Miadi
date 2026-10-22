@@ -2,21 +2,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Patient
 from app.schemas import AppointmentOut, PatientCreate, PatientOut
-from app.services import availability
+from app.services import availability, patients
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.post("", response_model=PatientOut, status_code=201, summary="Create a patient")
 def create_patient(body: PatientCreate, db: Session = Depends(get_db)):
-    """Create a patient so they can book appointments."""
-    patient = Patient(**body.model_dump())
-    db.add(patient)
-    db.commit()
-    db.refresh(patient)
-    return patient
+    """Create a patient so they can book appointments. Returns 409 if the email is already used."""
+    return patients.create_patient(db, body.name, body.phone, body.email)
 
 
 @router.get(

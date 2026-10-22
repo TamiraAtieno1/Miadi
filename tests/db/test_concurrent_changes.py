@@ -30,7 +30,7 @@ SECOND = datetime(2030, 1, 7, 10, 0, tzinfo=CLINIC_TZ)
 
 
 def test_cancel_and_reschedule_at_the_same_time_cannot_both_win(db, monkeypatch):
-    doctor = Doctor(name="Dr. Race")
+    doctor = Doctor(name="Dr. Race", email="race@example.com")
     doctor.working_hours = [WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))]
     patient = Patient(name="Pat Race")
     db.add_all([doctor, patient])
