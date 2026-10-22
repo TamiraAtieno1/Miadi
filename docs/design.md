@@ -29,7 +29,7 @@ Working hours are defined in the clinic's timezone (Africa/Nairobi, EAT, UTC+3) 
 |---|---|
 | Created | 201 |
 | Malformed input, misaligned slot, outside hours, in the past | 422 |
-| Slot already taken, already cancelled, rescheduling a cancelled appointment, cancelling/rescheduling one that has already started, rescheduling to the time it already has | 409 |
+| Slot already taken, already cancelled, rescheduling a cancelled appointment, cancelling/rescheduling one that has already started, rescheduling to the time it already has, someone else changed the same appointment at the same moment | 409 |
 | Unknown doctor / appointment / patient | 404 |
 
 **Database: PostgreSQL.**

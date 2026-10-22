@@ -35,6 +35,13 @@ class SlotUnavailableError(BookingError):
     code = "slot_unavailable"
 
 
+class ConcurrentChangeError(BookingError):
+    """Someone else changed the same appointment at the same moment (409)."""
+
+    status_code = 409
+    code = "concurrent_change"
+
+
 class InvalidStateError(BookingError):
     """The appointment is in a state that forbids this action (409)."""
 
