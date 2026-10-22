@@ -164,4 +164,24 @@ Details (secrets, keep-alive monitoring, free-tier limits) are in [docs/deployme
 
 ## 4. AI Reflection
 
-_(Write this yourself from your own notes: what you asked an AI to help with, what helped, and what was wrong or needed fixing.)_
+## 4. AI Reflection
+
+### 1. What did I use AI for across the four sections?
+
+- **1. System design:** talking through the design options (a database constraint against double-booking, optimistic versioning, an append-only history table instead of full event sourcing) and drafting the design notes. I made the final choices.
+- **2. Setup and running:** scaffolding the FastAPI services, Alembic migrations, the pytest suite, the web pages and logins, and the Docker setup. I ran everything myself on my own machine.
+- **3. CI/CD and deployment:** drafting the GitHub Actions workflow, locked requirements, the non-root Docker image and the Render deploy steps. I did the setup and every push, merge and release myself.
+- **4. This reflection and the docs:** structuring the README and PR descriptions. 
+
+### 2. One example where an AI suggestion improved my work
+
+The code review pointed out that the `version` column only protected overlapping database writes, not a stale screen: someone could open an appointment, have it rescheduled by someone else, then cancel it from the old page. I prompted: for example: how do I stop a user acting on an out-of-date appointment?. The suggestion was to require `expected_version` on cancel and reschedule and check it before any state change, refusing with `409 stale_version`, with the web forms carrying the version in a hidden field. I accepted it because it closed a real gap without adding locks.
+
+### 3. One example where AI output was wrong or incomplete, and how I caught it
+
+The first test-database safety guard treated a SQLite file as safe if "test" appeared anywhere in its path, so a temporary folder with "test" in its name could pass the check. for example: the tests for the guard failed, I noticed it in review. It was changed to check only the file name.
+
+### 4. Two decisions I made without AI, and why I trusted my judgment
+
+1. **Doing every Git and GitHub step myself.** I created each branch, opened and merged each PR and ran each release to `prod`. I trusted my own judgment here because releases affect the live site and I wanted to know exactly what went out.
+2. **Deciding which review points to take and which to skip.**  for example: I skipped the cleanup refactors because of time constraints. I trusted my own judgment because I knew how much time I had and which changes carried the most risk.
