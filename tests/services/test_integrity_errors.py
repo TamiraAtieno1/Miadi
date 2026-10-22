@@ -108,8 +108,12 @@ def test_rescheduling_follows_the_same_rule(db, world, monkeypatch):
         ),
     )
     with pytest.raises(SlotUnavailableError):
-        booking.reschedule_appointment(db, appointment.id, local(TUE, 9), now=NOW)
+        booking.reschedule_appointment(
+            db, appointment.id, local(TUE, 9), appointment.version, now=NOW
+        )
 
     monkeypatch.setattr(db, "commit", commit_fails_once("CHECK constraint failed: status"))
     with pytest.raises(IntegrityError, match="CHECK"):
-        booking.reschedule_appointment(db, appointment.id, local(TUE, 9), now=NOW)
+        booking.reschedule_appointment(
+            db, appointment.id, local(TUE, 9), appointment.version, now=NOW
+        )

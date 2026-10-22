@@ -30,8 +30,8 @@ def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db)):
     summary="Cancel an appointment (the slot becomes bookable again)",
 )
 def cancel_appointment(appointment_id: int, body: CancelRequest, db: Session = Depends(get_db)):
-    """Cancel an appointment with a reason, freeing its slot."""
-    return booking.cancel_appointment(db, appointment_id, body.reason)
+    """Cancel an appointment with a reason, freeing its slot. 409 if its version is out of date."""
+    return booking.cancel_appointment(db, appointment_id, body.reason, body.expected_version)
 
 
 @router.patch(
@@ -42,5 +42,7 @@ def cancel_appointment(appointment_id: int, body: CancelRequest, db: Session = D
 def reschedule_appointment(
     appointment_id: int, body: RescheduleRequest, db: Session = Depends(get_db)
 ):
-    """Move an appointment to a new slot with the same doctor."""
-    return booking.reschedule_appointment(db, appointment_id, body.start_time)
+    """Move an appointment to a new slot with the same doctor. 409 if its version is out of date."""
+    return booking.reschedule_appointment(
+        db, appointment_id, body.start_time, body.expected_version
+    )

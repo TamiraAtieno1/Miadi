@@ -31,9 +31,9 @@ def test_new_appointments_start_at_version_one(db, world):
 
 def test_every_change_bumps_the_version(db, world):
     appt = book(db, world, local(MON, 9))
-    moved = booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+    moved = booking.reschedule_appointment(db, appt.id, local(MON, 10), appt.version, now=NOW)
     assert moved.version == 2
-    cancelled = booking.cancel_appointment(db, appt.id, "x", now=NOW)
+    cancelled = booking.cancel_appointment(db, appt.id, "x", appt.version, now=NOW)
     assert cancelled.version == 3
 
 
@@ -42,7 +42,7 @@ def test_cancelling_a_stale_appointment_is_reported_not_applied(db, world):
     _change_behind_the_sessions_back(db, appt.id, cancel_reason="someone else was here")
 
     with pytest.raises(ConcurrentChangeError, match="Someone else just changed"):
-        booking.cancel_appointment(db, appt.id, "mine", now=NOW)
+        booking.cancel_appointment(db, appt.id, "mine", appt.version, now=NOW)
 
     row = db.execute(Appointment.__table__.select().where(Appointment.id == appt.id)).one()
     assert row.status == STATUS_BOOKED  # our cancel was not applied
@@ -54,7 +54,7 @@ def test_rescheduling_a_stale_appointment_is_reported_not_applied(db, world):
     _change_behind_the_sessions_back(db, appt.id, cancel_reason="someone else was here")
 
     with pytest.raises(ConcurrentChangeError):
-        booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+        booking.reschedule_appointment(db, appt.id, local(MON, 10), appt.version, now=NOW)
 
     # The rejected move left the original slot in place and the session usable.
     book(db, world, local(MON, 10), patient=world.p2)

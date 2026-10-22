@@ -13,6 +13,7 @@ FIELD_LABELS = {
     "patient_id": "patient ID",
     "appointment_id": "appointment ID",
     "start_time": "start time",
+    "expected_version": "expected version (the `version` you last saw for this appointment)",
 }
 
 

@@ -53,7 +53,7 @@ def test_cancel_and_reschedule_at_the_same_time_cannot_both_win(db, monkeypatch)
     def cancel() -> None:
         with SessionLocal() as session:
             try:
-                booking.cancel_appointment(session, appointment_id, "Cannot come", now=NOW)
+                booking.cancel_appointment(session, appointment_id, "Cannot come", 1, now=NOW)
                 outcomes["cancel"] = "ok"
             except ConcurrentChangeError as error:
                 outcomes["cancel"] = error
@@ -61,7 +61,7 @@ def test_cancel_and_reschedule_at_the_same_time_cannot_both_win(db, monkeypatch)
     def reschedule() -> None:
         with SessionLocal() as session:
             try:
-                booking.reschedule_appointment(session, appointment_id, SECOND, now=NOW)
+                booking.reschedule_appointment(session, appointment_id, SECOND, 1, now=NOW)
                 outcomes["reschedule"] = "ok"
             except ConcurrentChangeError as error:
                 outcomes["reschedule"] = error

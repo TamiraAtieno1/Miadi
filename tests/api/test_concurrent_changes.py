@@ -24,7 +24,9 @@ def test_a_concurrent_change_returns_409_with_a_code(client, monkeypatch):
 
     monkeypatch.setattr(booking, "get_appointment", load_then_lose_the_race)
 
-    response = client.patch(f"/appointments/{appt_id}/cancel", json={"reason": "x"})
+    response = client.patch(
+        f"/appointments/{appt_id}/cancel", json={"reason": "x", "expected_version": 1}
+    )
     assert response.status_code == 409
     assert response.json()["code"] == "concurrent_change"
     assert "Please reload" in response.json()["detail"]
