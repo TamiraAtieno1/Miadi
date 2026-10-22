@@ -31,7 +31,7 @@ CLIENTS = 10
 
 
 def test_only_one_of_many_simultaneous_bookings_wins(db, monkeypatch):
-    doctor = Doctor(name="Dr. Race")
+    doctor = Doctor(name="Dr. Race", email="race@example.com")
     doctor.working_hours = [WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))]
     patients = [Patient(name=f"Patient {i}") for i in range(CLIENTS)]
     db.add_all([doctor, *patients])

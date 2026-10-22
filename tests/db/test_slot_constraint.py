@@ -17,7 +17,7 @@ SLOT = datetime(2030, 1, 7, 6, 0, tzinfo=UTC)
 
 
 def _make_people(db):
-    doctor = Doctor(name="Dr. Test")
+    doctor = Doctor(name="Dr. Test", email="test@example.com")
     patient = Patient(name="Pat Test")
     db.add_all([doctor, patient])
     db.commit()

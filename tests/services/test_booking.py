@@ -67,7 +67,7 @@ def test_rejects_a_slot_that_is_already_taken(db, world):
 
 
 def test_same_time_with_a_different_doctor_is_fine(db, world):
-    other = Doctor(name="Dr. Other")
+    other = Doctor(name="Dr. Other", email="other@example.com")
     other.working_hours = [WorkingHours(weekday=0, start_time=time(9, 0), end_time=time(17, 0))]
     db.add(other)
     db.commit()

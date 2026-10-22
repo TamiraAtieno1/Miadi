@@ -1,6 +1,6 @@
 import datetime as dt
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_serializer
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.timeutils import to_clinic_time
 
@@ -103,6 +103,13 @@ class PatientCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
     email: str | None = Field(default=None, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def _normalise_email(cls, value: str | None) -> str | None:
+        """Store emails in lower case, and treat a blank one as "no email"."""
+        value = (value or "").strip().lower()
+        return value or None
 
 
 class PatientOut(BaseModel):
