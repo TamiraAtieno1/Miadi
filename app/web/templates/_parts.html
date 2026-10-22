@@ -1,0 +1,28 @@
+{# Shared pieces: status badge, cancel form, slot buttons. #}
+
+{% macro badge(status) -%}
+<span class="badge {{ status }}">{{ status_label(status) }}</span>
+{%- endmacro %}
+
+{% macro cancel_form(action) -%}
+<details class="cancel">
+  <summary>Cancel</summary>
+  <form method="post" action="{{ action }}">
+    <label>Reason
+      <input name="reason" required maxlength="500" autocomplete="off">
+    </label>
+    <button class="danger" type="submit">Cancel appointment</button>
+  </form>
+</details>
+{%- endmacro %}
+
+{% macro slot_buttons(action, slots, doctor_id=None) -%}
+<form method="post" action="{{ action }}" class="slots">
+  {% if doctor_id %}<input type="hidden" name="doctor_id" value="{{ doctor_id }}">{% endif %}
+  {% for start, end in slots %}
+  <button type="submit" name="start_time" value="{{ start.isoformat() }}" class="slot">
+    {{ start.strftime("%H:%M") }}
+  </button>
+  {% endfor %}
+</form>
+{%- endmacro %}

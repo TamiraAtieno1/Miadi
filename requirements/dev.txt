@@ -49,6 +49,14 @@ idna==3.20
     #   httpx
 iniconfig==2.3.1
     # via pytest
+itsdangerous==2.2.0
+    # via
+    #   -c requirements/base.txt
+    #   miadi (pyproject.toml)
+jinja2==3.1.6
+    # via
+    #   -c requirements/base.txt
+    #   miadi (pyproject.toml)
 mako==1.4.3
     # via
     #   -c requirements/base.txt
@@ -56,6 +64,7 @@ mako==1.4.3
 markupsafe==3.0.4
     # via
     #   -c requirements/base.txt
+    #   jinja2
     #   mako
 opentelemetry-api==1.45.1
     # via
@@ -87,6 +96,10 @@ pytest==9.1.1
     #   pytest-cov
 pytest-cov==7.1.0
     # via miadi (pyproject.toml)
+python-multipart==0.0.32
+    # via
+    #   -c requirements/base.txt
+    #   miadi (pyproject.toml)
 ruff==0.17.1
     # via miadi (pyproject.toml)
 sqlalchemy==2.1.6

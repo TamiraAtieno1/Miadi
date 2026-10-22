@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div class="auth-grid">
+  <section class="pitch">
+    <p class="brand">Miadi</p>
+    <h1>Book your clinic visit in half-hour slots.</h1>
+    <p class="lead">Sign in to see your appointments, or create a patient account to book one.</p>
+
+    <div class="ruler" aria-hidden="true">
+      {% for i in range(16) %}
+      <span class="tick {{ 'taken' if i in (1, 2, 5, 9, 10, 13) else '' }}" style="--i: {{ i }}"></span>
+      {% endfor %}
+      <span class="ruler-label first">09:00</span>
+      <span class="ruler-label mid">13:00</span>
+      <span class="ruler-label last">17:00</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Sign in</h2>
+    {% if flashes %}
+    <div class="flashes" role="status">
+      {% for kind, message in flashes %}<p class="flash {{ kind }}">{{ message }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <form method="post" action="/login" class="stack">
+      <label>Email
+        <input type="email" name="email" autocomplete="username" required autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="primary">Sign in</button>
+    </form>
+    <p class="aside">New patient? <a href="/register">Create an account</a></p>
+
+    {% if demo %}
+    <div class="demo">
+      <h3>Try a demo account</h3>
+      <dl>
+        {% for label, email in demo_accounts %}
+        <dt>{{ label }}</dt><dd>{{ email }}</dd>
+        {% endfor %}
+      </dl>
+      <p>Password for all three: <code>{{ demo_password }}</code></p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
