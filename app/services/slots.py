@@ -24,6 +24,18 @@ SLOT_LENGTH = timedelta(minutes=30)
 MIN_NOTICE = timedelta(hours=1)
 
 
+def first_slot_start(opening: datetime) -> datetime:
+    """The first bookable start at or after a doctor's opening time.
+
+    Bookings only start on the hour or half hour. If a doctor opens at 09:15 their
+    first slot is 09:30, so availability never offers a time that booking would refuse.
+    """
+    midnight = opening.replace(hour=0, minute=0, second=0, microsecond=0)
+    grid = SLOT_LENGTH.total_seconds()
+    seconds = (opening - midnight).total_seconds()
+    return midnight + timedelta(seconds=-(-seconds // grid) * grid)
+
+
 def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -> datetime:
     """Check that `start` is a bookable slot for the doctor. Returns it in UTC."""
     start_utc = as_utc(start)

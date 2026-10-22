@@ -10,7 +10,7 @@ from app.models import (
     Appointment,
 )
 from app.services.lookups import get_doctor, get_patient, get_working_hours
-from app.services.slots import MIN_NOTICE, SLOT_LENGTH
+from app.services.slots import MIN_NOTICE, SLOT_LENGTH, first_slot_start
 from app.timeutils import CLINIC_TZ, as_utc, utcnow
 
 
@@ -46,7 +46,7 @@ def get_availability(
     }
 
     earliest = now + MIN_NOTICE
-    current = datetime.combine(day, hours.start_time, tzinfo=CLINIC_TZ)
+    current = first_slot_start(datetime.combine(day, hours.start_time, tzinfo=CLINIC_TZ))
     closing = datetime.combine(day, hours.end_time, tzinfo=CLINIC_TZ)
 
     slots: list[tuple[datetime, datetime]] = []
