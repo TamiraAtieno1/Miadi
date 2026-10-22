@@ -8,8 +8,10 @@ from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.errors import (
+    ConcurrentChangeError,
     InvalidStateError,
     SlotUnavailableError,
 )
@@ -22,6 +24,21 @@ from app.models import (
 from app.services.lookups import get_appointment, get_doctor, get_patient
 from app.services.slots import SLOT_LENGTH, validate_slot
 from app.timeutils import as_utc, utcnow
+
+
+def _commit_or_report_concurrent_change(db: Session) -> None:
+    """Commit, turning "someone else changed this row first" into a clean 409.
+
+    The appointment row carries a version number. Our UPDATE only matches if the
+    version is still the one we read; otherwise another request got there first.
+    """
+    try:
+        db.commit()
+    except StaleDataError as error:
+        db.rollback()
+        raise ConcurrentChangeError(
+            "Someone else just changed this appointment. Please reload it and try again."
+        ) from error
 
 
 def book_appointment(
@@ -83,7 +100,7 @@ def cancel_appointment(
     appointment.status = STATUS_CANCELLED
     appointment.cancel_reason = reason
     appointment.cancelled_at = now
-    db.commit()
+    _commit_or_report_concurrent_change(db)
     db.refresh(appointment)
     return appointment
 
@@ -123,7 +140,7 @@ def reschedule_appointment(
     appointment.end_time = new_start_utc + SLOT_LENGTH
     appointment.status = STATUS_RESCHEDULED
     try:
-        db.commit()
+        _commit_or_report_concurrent_change(db)
     except IntegrityError as error:
         db.rollback()
         raise SlotUnavailableError(
