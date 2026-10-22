@@ -164,8 +164,6 @@ Details (secrets, keep-alive monitoring, free-tier limits) are in [docs/deployme
 
 ## 4. AI Reflection
 
-## 4. AI Reflection
-
 ### 1. What did I use AI for across the four sections?
 
 - **1. System design:** talking through the design options (a database constraint against double-booking, optimistic versioning, an append-only history table instead of full event sourcing) and drafting the design notes. I made the final choices.
