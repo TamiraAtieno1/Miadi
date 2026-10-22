@@ -14,7 +14,7 @@ from app.errors import (
     SlotUnavailableError,
 )
 from app.models import (
-    STATUS_BOOKED,
+    ACTIVE_STATUSES,
     Appointment,
 )
 from app.services.lookups import get_working_hours
@@ -61,7 +61,7 @@ def validate_slot(db: Session, doctor_id: int, start: datetime, now: datetime) -
         select(Appointment.id).where(
             Appointment.doctor_id == doctor_id,
             Appointment.start_time == start_utc,
-            Appointment.status == STATUS_BOOKED,
+            Appointment.status.in_(ACTIVE_STATUSES),
         )
     )
     if taken is not None:

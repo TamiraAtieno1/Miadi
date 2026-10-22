@@ -31,6 +31,16 @@ def test_booked_slot_is_removed_and_returns_after_cancelling(db, world):
     assert len(slots) == 16
 
 
+def test_rescheduled_slot_is_taken_and_the_old_one_is_free(db, world):
+    appt = book(db, world, local(MON, 9))
+    booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+
+    slots = availability.get_availability(db, world.doctor.id, date(2030, 1, 7), now=NOW)
+    starts = [start for start, _ in slots]
+    assert local(MON, 9) in starts
+    assert local(MON, 10) not in starts
+
+
 def test_availability_hides_slots_that_can_no_longer_be_booked(db, world):
     now = local(MON, 10, 15)  # bookable from 11:15 -> first slot is 11:30
     slots = availability.get_availability(db, world.doctor.id, date(2030, 1, 7), now=now)

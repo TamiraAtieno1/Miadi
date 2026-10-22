@@ -10,7 +10,7 @@ from app.errors import (
     NotFoundError,
     SlotUnavailableError,
 )
-from app.models import STATUS_BOOKED
+from app.models import STATUS_BOOKED, STATUS_CANCELLED, STATUS_RESCHEDULED
 from app.services import booking
 from app.timeutils import as_utc
 from tests.services.helpers import MON, NOW, SAT, book, local
@@ -23,6 +23,8 @@ def test_reschedule_moves_the_appointment_and_frees_the_old_slot(db, world):
     assert moved.id == appt.id
     assert as_utc(moved.start_time) == local(MON, 10).astimezone(UTC)
     assert as_utc(moved.end_time) == local(MON, 10, 30).astimezone(UTC)
+
+    assert moved.status == STATUS_RESCHEDULED
 
     # Old slot is available again.
     book(db, world, local(MON, 9), patient=world.p2)
@@ -91,3 +93,29 @@ def test_reschedule_race_is_caught_by_the_database_constraint(db, world, monkeyp
     db.refresh(mine)
     assert as_utc(mine.start_time) == local(MON, 9).astimezone(UTC)
     assert mine.status == STATUS_BOOKED
+
+
+def test_a_rescheduled_appointment_still_holds_its_new_slot(db, world):
+    appt = book(db, world, local(MON, 9))
+    booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+
+    with pytest.raises(SlotUnavailableError, match="already booked"):
+        book(db, world, local(MON, 10), patient=world.p2)
+
+
+def test_a_rescheduled_appointment_can_be_rescheduled_again(db, world):
+    appt = book(db, world, local(MON, 9))
+    booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+    again = booking.reschedule_appointment(db, appt.id, local(MON, 11), now=NOW)
+
+    assert again.status == STATUS_RESCHEDULED
+    assert as_utc(again.start_time) == local(MON, 11).astimezone(UTC)
+
+
+def test_a_rescheduled_appointment_can_be_cancelled_and_frees_the_slot(db, world):
+    appt = book(db, world, local(MON, 9))
+    booking.reschedule_appointment(db, appt.id, local(MON, 10), now=NOW)
+    cancelled = booking.cancel_appointment(db, appt.id, "Changed my mind", now=NOW)
+
+    assert cancelled.status == STATUS_CANCELLED
+    book(db, world, local(MON, 10), patient=world.p2)  # the slot is free again
