@@ -15,7 +15,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 STATUS_BOOKED = "booked"
+STATUS_RESCHEDULED = "rescheduled"
 STATUS_CANCELLED = "cancelled"
+
+# Statuses that hold a slot. A cancelled appointment does not.
+ACTIVE_STATUSES = (STATUS_BOOKED, STATUS_RESCHEDULED)
 
 
 def _utcnow() -> datetime:
@@ -68,22 +72,23 @@ class Patient(Base):
 class Appointment(Base):
     """A 30-minute booking of a doctor by a patient.
 
-    Times are stored in UTC. Cancelling is a soft delete: the row stays with
-    status `cancelled`, a reason and a timestamp.
+    Times are stored in UTC. Status is `booked`, then `rescheduled` once it has
+    been moved to a new slot, or `cancelled`. Cancelling is a soft delete: the
+    row stays with a reason and a timestamp.
     """
 
     __tablename__ = "appointments"
     __table_args__ = (
-        # The core concurrency guarantee: at most ONE active booking per
-        # doctor per start time. Cancelled rows are excluded, so a cancelled
-        # slot becomes bookable again with no extra logic.
+        # The core concurrency guarantee: at most ONE active appointment (booked
+        # or rescheduled) per doctor per start time. Cancelled rows are
+        # excluded, so a cancelled slot becomes bookable again with no extra logic.
         Index(
             "uq_active_slot",
             "doctor_id",
             "start_time",
             unique=True,
-            postgresql_where=text("status = 'booked'"),
-            sqlite_where=text("status = 'booked'"),
+            postgresql_where=text("status IN ('booked', 'rescheduled')"),
+            sqlite_where=text("status IN ('booked', 'rescheduled')"),
         ),
     )
 

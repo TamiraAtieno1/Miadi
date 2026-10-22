@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    STATUS_BOOKED,
+    ACTIVE_STATUSES,
     Appointment,
 )
 from app.services.lookups import get_doctor, get_patient, get_working_hours
@@ -38,7 +38,7 @@ def get_availability(
         for start in db.scalars(
             select(Appointment.start_time).where(
                 Appointment.doctor_id == doctor_id,
-                Appointment.status == STATUS_BOOKED,
+                Appointment.status.in_(ACTIVE_STATUSES),
                 Appointment.start_time >= day_start,
                 Appointment.start_time < day_end,
             )
@@ -69,7 +69,7 @@ def list_upcoming_for_patient(
             select(Appointment)
             .where(
                 Appointment.patient_id == patient_id,
-                Appointment.status == STATUS_BOOKED,
+                Appointment.status.in_(ACTIVE_STATUSES),
                 Appointment.start_time >= now,
             )
             .order_by(Appointment.start_time)

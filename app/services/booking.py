@@ -16,6 +16,7 @@ from app.errors import (
 from app.models import (
     STATUS_BOOKED,
     STATUS_CANCELLED,
+    STATUS_RESCHEDULED,
     Appointment,
 )
 from app.services.lookups import get_appointment, get_doctor, get_patient
@@ -120,6 +121,7 @@ def reschedule_appointment(
 
     appointment.start_time = new_start_utc
     appointment.end_time = new_start_utc + SLOT_LENGTH
+    appointment.status = STATUS_RESCHEDULED
     try:
         db.commit()
     except IntegrityError as error:
