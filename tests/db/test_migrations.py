@@ -29,7 +29,7 @@ def test_upgrade_creates_the_schema_the_models_describe(alembic_cfg):
     assert diff == []  # no drift between models and migrations
 
     inspector = sa.inspect(engine)
-    assert {"doctors", "patients", "appointments", "working_hours"} <= set(
+    assert {"doctors", "patients", "appointments", "working_hours", "users"} <= set(
         inspector.get_table_names()
     )
     assert "uq_active_slot" in {i["name"] for i in inspector.get_indexes("appointments")}
@@ -54,7 +54,7 @@ def test_upgrade_adopts_a_database_created_before_alembic(alembic_cfg):
     command.upgrade(cfg, "head")  # must not fail with "table already exists"
 
     with engine.connect() as conn:
-        assert MigrationContext.configure(conn).get_current_revision() == "0003"
+        assert MigrationContext.configure(conn).get_current_revision() == "0004"
     engine.dispose()
 
 

@@ -15,6 +15,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
+ROLE_ADMIN = "admin"
+ROLE_DOCTOR = "doctor"
+ROLE_PATIENT = "patient"
+
 STATUS_BOOKED = "booked"
 STATUS_RESCHEDULED = "rescheduled"
 STATUS_CANCELLED = "cancelled"
@@ -60,7 +64,7 @@ class WorkingHours(Base):
 
 
 class Patient(Base):
-    """A person who books appointments. There is no authentication in this scope."""
+    """A person who books appointments. A patient can also have a login (see `User`)."""
 
     __tablename__ = "patients"
 
@@ -105,9 +109,29 @@ class Appointment(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+
+    doctor: Mapped[Doctor] = relationship()
+    patient: Mapped[Patient] = relationship()
     # Optimistic concurrency: every UPDATE is "... WHERE version = <the version I read>"
     # and bumps it. If someone else changed the row first, nothing matches and
     # SQLAlchemy raises StaleDataError instead of silently overwriting their change.
     version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
 
     __mapper_args__ = {"version_id_col": version}
+
+
+class User(Base):
+    """A login account. Doctors and patients link to their own record; admins link to none."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(20))
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("doctors.id"), nullable=True)
+    patient_id: Mapped[int | None] = mapped_column(ForeignKey("patients.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    doctor: Mapped[Doctor | None] = relationship()
+    patient: Mapped[Patient | None] = relationship()

@@ -42,7 +42,7 @@ _Decisions I made where the brief was ambiguous._
 - Slots start on :00 or :30; anything else is rejected (422).
 - A slot is bookable only if it is not in the past and starts at least 1 hour from now (the bonus rule). Availability hides slots that are no longer bookable, so the list matches exactly what `POST /appointments` will accept.
 - Clients must send timestamps with a UTC offset (e.g. `2026-10-26T09:00:00+03:00`). A timestamp without one is rejected (422) rather than guessed. Responses use clinic local time (+03:00).
-- Patients are identified by id with no authentication; auth is out of scope. `POST /patients` and `GET /doctors` exist only so the API can be tried end to end.
+- The JSON API has no authentication, as the brief describes: patients are identified by id. The browser pages do need a login (see [web-pages.md](web-pages.md)). `POST /patients` and `GET /doctors` exist only so the API can be tried end to end.
 - A patient may hold several appointments, including at the same time with different doctors (not blocked).
 - Cancelling an already-cancelled appointment returns 409. A cancel reason is required and cannot be blank.
 - Cancelling or rescheduling an appointment that has already started returns 409.
@@ -56,6 +56,6 @@ _Decisions I made where the brief was ambiguous._
 - Multiple clinics/locations: add a `Clinic` model and scope doctors and hours to it.
 - Doctor leave and holidays: an `Exception` table overriding WorkingHours.
 - Variable appointment lengths: add duration to appointment types.
-- Auth and roles (patient / receptionist / doctor).
+- Protect the JSON API too (tokens or the same sessions), and add a receptionist role. Patient, doctor and admin logins already exist for the browser pages.
 - Notifications (SMS/email reminders) via a background queue.
 - Caching availability, and read replicas, if read traffic grows.

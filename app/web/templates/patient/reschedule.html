@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_parts.html" import slot_buttons %}
+{% block title %}Reschedule{% endblock %}
+{% block nav %}<a href="/portal/patient">My appointments</a>{% endblock %}
+{% block content %}
+<h1>Reschedule</h1>
+<p class="sub">
+  {{ appointment.doctor.name }}, now on {{ appointment.start_time | day_name }} at
+  {{ appointment.start_time | clock }}. Pick a new time with the same doctor.
+</p>
+
+<form method="get" class="picker">
+  <label>Day
+    <input type="date" name="day" value="{{ day.isoformat() }}" min="{{ today.isoformat() }}" max="{{ last_day.isoformat() }}" required>
+  </label>
+  <button type="submit">Show times</button>
+</form>
+
+<section>
+  <h2>{{ day | day_name }}</h2>
+  {% if slots %}
+  {{ slot_buttons("/portal/patient/appointments/%d/reschedule" % appointment.id, slots) }}
+  {% else %}
+  <p class="empty">No free times that day. Try another day.</p>
+  {% endif %}
+</section>
+{% endblock %}

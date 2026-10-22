@@ -1,0 +1,161 @@
+:root {
+  --mist: #f5f7f6;
+  --paper: #ffffff;
+  --ink: #14262b;
+  --muted: #55696d;
+  --line: #d5dedc;
+  --spruce: #0e5a52;
+  --spruce-dark: #0a4640;
+  --tint: #d9efe9;
+  --red: #b3382c;
+  --red-tint: #f8e3e0;
+  --amber: #f2b134;
+  --amber-tint: #fbefd0;
+  --radius: 10px;
+  --font: "Avenir Next", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--mist);
+  color: var(--ink);
+  font: 1rem/1.55 var(--font);
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .5rem; letter-spacing: -.01em; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); }
+h2 { font-size: 1.2rem; margin-top: 2rem; }
+h3 { font-size: 1rem; }
+p { margin: 0 0 1rem; max-width: 62ch; }
+a { color: var(--spruce); text-underline-offset: 2px; }
+a:hover { color: var(--spruce-dark); }
+
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+
+.skip { position: absolute; left: -999px; top: 0; background: var(--ink); color: #fff; padding: .5rem 1rem; z-index: 10; }
+.skip:focus { left: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---- top bar and page frame ---- */
+.bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1.5rem;
+  padding: .75rem 1rem; background: var(--paper); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; font-size: 1.25rem; color: var(--spruce); text-decoration: none; letter-spacing: -.02em; margin: 0; }
+.bar-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1.25rem; }
+.bar-nav form { margin: 0; }
+.who { color: var(--muted); font-size: .9rem; }
+
+main { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.sub { color: var(--muted); }
+.muted { color: var(--muted); font-weight: 400; }
+.empty { padding: 1rem; background: var(--paper); border: 1px dashed var(--line); border-radius: var(--radius); }
+.narrow { max-width: 32rem; }
+
+/* ---- messages ---- */
+.flashes { margin-bottom: 1rem; }
+.flash { margin: 0 0 .5rem; padding: .7rem .9rem; border-radius: var(--radius); border-left: 4px solid var(--spruce); background: var(--tint); }
+.flash.error { border-color: var(--red); background: var(--red-tint); }
+
+/* ---- forms and buttons ---- */
+label { display: block; font-weight: 600; font-size: .95rem; }
+input, select {
+  min-height: 2.75rem;
+  display: block; width: 100%; margin-top: .3rem; padding: .6rem .7rem; font: inherit; color: inherit;
+  background: var(--paper); border: 1px solid #9fb0ad; border-radius: 8px;
+}
+.hint { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; margin-top: .2rem; }
+.stack { display: grid; gap: 1rem; }
+
+button, .button {
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block;
+  padding: .6rem 1rem; border-radius: 8px; border: 1px solid var(--spruce); background: var(--paper); color: var(--spruce);
+}
+button:hover, .button:hover { background: var(--tint); }
+button.primary { background: var(--spruce); color: #fff; }
+button.primary:hover { background: var(--spruce-dark); }
+button.danger { border-color: var(--red); color: var(--red); }
+button.danger:hover { background: var(--red-tint); }
+button.link { border: 0; background: none; padding: 0; color: var(--spruce); text-decoration: underline; font-weight: 500; }
+
+.picker { display: grid; gap: 1rem; grid-template-columns: 1fr; align-items: end; margin: 1.25rem 0; }
+@media (min-width: 40rem) { .picker { grid-template-columns: 2fr 1fr auto; } }
+
+/* ---- free times ---- */
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .5rem; }
+.slot { font-variant-numeric: tabular-nums; background: var(--tint); border-color: transparent; color: var(--ink); }
+.slot:hover { background: var(--spruce); color: #fff; }
+
+/* ---- appointment lists ---- */
+.day { margin-top: 1.5rem; color: var(--muted); font-size: .95rem; font-weight: 600; }
+.rows, .plain { list-style: none; padding: 0; margin: 0; }
+.row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: .25rem 1rem; align-items: center;
+  padding: .8rem 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: .5rem;
+}
+.row .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; }
+.row .actions:empty { display: none; }
+.time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
+.quiet .row { background: transparent; }
+@media (min-width: 40rem) {
+  .row { grid-template-columns: 11rem 1fr auto auto; }
+  .row .actions { grid-column: auto; }
+}
+
+.badge { display: inline-block; padding: .1rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--tint); color: var(--spruce-dark); }
+.badge.rescheduled { background: var(--amber-tint); color: #6b4a00; }
+.badge.cancelled { background: var(--red-tint); color: var(--red); text-decoration: line-through; }
+
+.cancel summary { cursor: pointer; color: var(--red); font-weight: 500; }
+.cancel form { display: grid; gap: .5rem; margin-top: .5rem; min-width: 14rem; }
+
+/* ---- admin ---- */
+.counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1rem 0; }
+.counts div { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: .75rem 1rem; }
+.counts dt { color: var(--muted); font-size: .9rem; }
+.counts dd { margin: 0; font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.filters { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.filters a { padding: .3rem .8rem; border-radius: 999px; border: 1px solid var(--line); text-decoration: none; background: var(--paper); }
+.filters a[aria-current="page"] { background: var(--spruce); color: #fff; border-color: var(--spruce); }
+.table-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .85rem; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+
+/* ---- sign-in and sign-up ---- */
+.auth main { max-width: 64rem; padding-top: 2.5rem; }
+.auth-grid { display: grid; gap: 2rem; align-items: start; }
+@media (min-width: 52rem) { .auth-grid { grid-template-columns: 1.1fr 1fr; gap: 4rem; padding-top: 2rem; } }
+.auth-grid.single { max-width: 28rem; margin: 0 auto; grid-template-columns: 1fr; }
+.pitch h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); max-width: 16ch; }
+.lead { color: var(--muted); font-size: 1.1rem; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; }
+.card h2 { margin-top: 0; }
+.aside { margin: 1rem 0 0; color: var(--muted); }
+
+.demo { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .9rem; }
+.demo h3 { font-size: .95rem; }
+.demo dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .75rem; margin: 0 0 .5rem; }
+.demo dt { font-weight: 600; }
+.demo dd { margin: 0; overflow-wrap: anywhere; }
+code { background: var(--mist); padding: .1rem .35rem; border-radius: 4px; }
+
+/* The one memorable thing: a clinic day, 09:00 to 17:00, in half-hour pieces. */
+.ruler {
+  position: relative; display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px;
+  margin-top: 2.5rem; padding-bottom: 1.5rem; max-width: 34rem;
+}
+.tick { height: 3.2rem; border-radius: 4px; background: var(--tint); }
+.tick.taken { background: var(--spruce); }
+.ruler-label { position: absolute; bottom: 0; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ruler-label.first { left: 0; }
+.ruler-label.mid { left: 50%; transform: translateX(-50%); }
+.ruler-label.last { right: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .tick { animation: fill .5s ease-out both; animation-delay: calc(var(--i) * 40ms); }
+  @keyframes fill { from { transform: scaleY(.15); transform-origin: bottom; opacity: .3; } to { transform: scaleY(1); opacity: 1; } }
+}

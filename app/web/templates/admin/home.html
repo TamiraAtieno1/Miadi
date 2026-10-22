@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_parts.html" import badge, cancel_form %}
+{% block title %}Clinic overview{% endblock %}
+{% block content %}
+<h1>Clinic overview</h1>
+
+<dl class="counts">
+  <div><dt>Upcoming</dt><dd>{{ counts.upcoming }}</dd></div>
+  <div><dt>Cancelled</dt><dd>{{ counts.cancelled }}</dd></div>
+  <div><dt>All time</dt><dd>{{ counts.total }}</dd></div>
+</dl>
+
+<section>
+  <h2>Doctors</h2>
+  <ul class="plain">
+    {% for d in doctors %}<li>{{ d.name }} <span class="muted">{{ d.specialty }}</span></li>{% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Appointments</h2>
+  <nav class="filters" aria-label="Filter by status">
+    <a href="/portal/admin" {% if not status %}aria-current="page"{% endif %}>All</a>
+    {% for s in statuses %}
+    <a href="/portal/admin?status={{ s }}" {% if s == status %}aria-current="page"{% endif %}>{{ status_label(s) }}</a>
+    {% endfor %}
+  </nav>
+  {% if appointments %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When</th><th>Patient</th><th>Doctor</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td>{{ a.start_time | day_name }}, {{ a.start_time | clock }}</td>
+          <td>{{ a.patient.name }}</td>
+          <td>{{ a.doctor.name }}</td>
+          <td>{{ badge(a.status) }}</td>
+          <td>{% if is_open(a, now) %}{{ cancel_form("/portal/admin/appointments/%d/cancel" % a.id) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No appointments match.</p>
+  {% endif %}
+</section>
+{% endblock %}
