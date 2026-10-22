@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, time
 
 from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -11,7 +13,9 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.expression import ColumnElement
 
 from app.database import Base
 
@@ -27,6 +31,28 @@ STATUS_CANCELLED = "cancelled"
 ACTIVE_STATUSES = (STATUS_BOOKED, STATUS_RESCHEDULED)
 
 
+class AppointmentLastsThirtyMinutes(ColumnElement):
+    """SQL condition: end_time is exactly 30 minutes after start_time.
+
+    Date arithmetic differs between databases, so this one condition is written out
+    separately for PostgreSQL (production) and SQLite (local development and tests).
+    """
+
+    type = Boolean()
+    inherit_cache = True
+
+
+@compiles(AppointmentLastsThirtyMinutes, "postgresql")
+def _thirty_minutes_postgresql(element, compiler, **kw) -> str:
+    return "end_time - start_time = interval '30 minutes'"
+
+
+@compiles(AppointmentLastsThirtyMinutes)
+def _thirty_minutes_default(element, compiler, **kw) -> str:
+    # SQLite stores timestamps as text; strftime('%s') turns them into whole seconds.
+    return "strftime('%s', end_time) - strftime('%s', start_time) = 1800"
+
+
 def _utcnow() -> datetime:
     """Current time in UTC, used as the default for timestamp columns."""
     return datetime.now(UTC)
@@ -36,9 +62,12 @@ class Doctor(Base):
     """A clinic doctor. Their weekly schedule is stored in `WorkingHours`."""
 
     __tablename__ = "doctors"
+    # Two doctors can share a name, but not an email: this is what stops duplicate records.
+    __table_args__ = (UniqueConstraint("email", name="uq_doctors_email"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str] = mapped_column(String(255))
     specialty: Mapped[str] = mapped_column(String(100), default="General Practice")
 
     working_hours: Mapped[list["WorkingHours"]] = relationship(back_populates="doctor")
@@ -52,7 +81,11 @@ class WorkingHours(Base):
     """
 
     __tablename__ = "working_hours"
-    __table_args__ = (UniqueConstraint("doctor_id", "weekday", name="uq_doctor_weekday"),)
+    __table_args__ = (
+        UniqueConstraint("doctor_id", "weekday", name="uq_doctor_weekday"),
+        CheckConstraint("weekday BETWEEN 0 AND 6", name="ck_working_hours_weekday"),
+        CheckConstraint("start_time < end_time", name="ck_working_hours_order"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"))
@@ -67,6 +100,9 @@ class Patient(Base):
     """A person who books appointments. A patient can also have a login (see `User`)."""
 
     __tablename__ = "patients"
+    # Emails are stored in lower case. Several patients may have no email (it is optional),
+    # but two patients can't share one.
+    __table_args__ = (UniqueConstraint("email", name="uq_patients_email"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
@@ -95,6 +131,11 @@ class Appointment(Base):
             postgresql_where=text("status IN ('booked', 'rescheduled')"),
             sqlite_where=text("status IN ('booked', 'rescheduled')"),
         ),
+        # Without this, a status the index doesn't know about would silently hold no slot.
+        CheckConstraint(
+            "status IN ('booked', 'rescheduled', 'cancelled')", name="ck_appointments_status"
+        ),
+        CheckConstraint(AppointmentLastsThirtyMinutes(), name="ck_appointments_duration"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -124,6 +165,15 @@ class User(Base):
     """A login account. Doctors and patients link to their own record; admins link to none."""
 
     __tablename__ = "users"
+    __table_args__ = (
+        # Admins link to no record; a doctor to exactly one doctor; a patient to one patient.
+        CheckConstraint(
+            "(role = 'admin' AND doctor_id IS NULL AND patient_id IS NULL)"
+            " OR (role = 'doctor' AND doctor_id IS NOT NULL AND patient_id IS NULL)"
+            " OR (role = 'patient' AND patient_id IS NOT NULL AND doctor_id IS NULL)",
+            name="ck_users_role_link",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)

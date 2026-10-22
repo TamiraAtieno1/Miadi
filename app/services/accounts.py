@@ -39,7 +39,12 @@ def register_patient(db: Session, name: str, email: str, password: str) -> User:
         raise InvalidAccountError("Please enter a valid email address.")
     if len(password) < MIN_PASSWORD_LENGTH:
         raise InvalidAccountError(f"Your password needs at least {MIN_PASSWORD_LENGTH} characters.")
-    if db.scalar(select(User.id).where(User.email == email)) is not None:
+    # A patient created through the API with this email is not the same as this person: with no
+    # email check we must not hand them that record, so the address counts as taken.
+    if (
+        db.scalar(select(User.id).where(User.email == email)) is not None
+        or db.scalar(select(Patient.id).where(Patient.email == email)) is not None
+    ):
         raise EmailTakenError("There is already an account with that email. Try signing in.")
 
     patient = Patient(name=name, email=email)

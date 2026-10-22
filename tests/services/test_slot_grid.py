@@ -12,7 +12,7 @@ from tests.services.helpers import MON, NOW, local
 
 
 def doctor_with_hours(db, start: time, end: time) -> tuple[Doctor, Patient]:
-    doctor = Doctor(name="Dr. Odd Hours")
+    doctor = Doctor(name="Dr. Odd Hours", email="odd.hours@example.com")
     doctor.working_hours = [WorkingHours(weekday=0, start_time=start, end_time=end)]
     patient = Patient(name="Pat Grid")
     db.add_all([doctor, patient])
