@@ -27,7 +27,7 @@ Miadi (Swahili for "appointment") is a REST API for booking, cancelling and resc
 | **Doctor** | id, name, specialty | 5 seeded for now |
 | **WorkingHours** | id, doctor_id, weekday (0-6), start_time, end_time | One row per doctor per working weekday. Separate from Doctor so hours can differ by day and a doctor can have days off. |
 | **Patient** | id, name, phone, email | No auth in scope (see [design notes](docs/design.md#assumptions-ambiguities-i-resolved)) |
-| **Appointment** | id, doctor_id, patient_id, start_time (UTC), end_time (UTC), status (`booked` / `cancelled`), cancel_reason, cancelled_at, created_at, updated_at | Soft-cancelled, never deleted |
+| **Appointment** | id, doctor_id, patient_id, start_time (UTC), end_time (UTC), status (`booked` / `rescheduled` / `cancelled`), cancel_reason, cancelled_at, created_at, updated_at | Soft-cancelled, never deleted |
 
 ### 1.3 Components
 
@@ -105,7 +105,7 @@ The concurrency test only runs when `DATABASE_URL` points at Postgres:
 ```bash
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/clinic_test pytest -q
 ```
-Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of tables.
+Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of tables. Tests are organised by area: `tests/api` (HTTP), `tests/services` (booking rules), `tests/db` (database, concurrency, migrations) and `tests/project`.
 
 ### Configuration
 | Variable | Purpose | Default |
@@ -121,10 +121,10 @@ Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of table
 | `POST /appointments` | Book a slot (`doctor_id`, `patient_id`, `start_time`) | 201 | 404, 409 slot taken, 422 invalid slot |
 | `PATCH /appointments/{id}/cancel` | Cancel with a `reason`; the slot becomes bookable again | 200 | 404, 409 already cancelled or started, 422 missing reason |
 | `PATCH /appointments/{id}/reschedule` | Move to a new `start_time` (same doctor) | 200 | 404, 409 cancelled / slot taken / same time, 422 invalid slot |
-| `GET /patients/{id}/appointments` _(bonus)_ | Upcoming booked appointments, soonest first | 200 | 404 |
+| `GET /patients/{id}/appointments` _(bonus)_ | Upcoming (booked or rescheduled) appointments, soonest first | 200 | 404 |
 | `GET /doctors`, `POST /patients` _(extras)_ | List doctors with their hours; create a patient | 200 / 201 | 422 |
 
-Every expected failure has the same shape, e.g. `{"detail": "That slot is already booked.", "code": "slot_unavailable"}`.
+Every expected failure has the same shape, e.g. `{"detail": "Sorry, that slot is already booked. Please choose another time.", "code": "slot_unavailable"}`. Invalid input returns 422 with code `validation_error` and one plain sentence in `detail`.
 Seeded data: doctors with ids 1-5 and one patient with id 1. Interactive docs are at `/docs`.
 
 Try it (use a future weekday for the date):
