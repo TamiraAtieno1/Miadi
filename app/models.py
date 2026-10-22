@@ -4,6 +4,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     SmallInteger,
     String,
     Time,
@@ -104,3 +105,9 @@ class Appointment(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+    # Optimistic concurrency: every UPDATE is "... WHERE version = <the version I read>"
+    # and bumps it. If someone else changed the row first, nothing matches and
+    # SQLAlchemy raises StaleDataError instead of silently overwriting their change.
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+
+    __mapper_args__ = {"version_id_col": version}

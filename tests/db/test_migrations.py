@@ -54,7 +54,7 @@ def test_upgrade_adopts_a_database_created_before_alembic(alembic_cfg):
     command.upgrade(cfg, "head")  # must not fail with "table already exists"
 
     with engine.connect() as conn:
-        assert MigrationContext.configure(conn).get_current_revision() == "0002"
+        assert MigrationContext.configure(conn).get_current_revision() == "0003"
     engine.dispose()
 
 
@@ -103,4 +103,30 @@ def test_downgrade_turns_rescheduled_appointments_back_into_booked(alembic_cfg):
 
     with engine.connect() as conn:
         assert conn.execute(sa.text("SELECT status FROM appointments")).scalar() == "booked"
+    engine.dispose()
+
+
+def test_existing_appointments_get_version_one_when_upgrading(alembic_cfg):
+    cfg, url = alembic_cfg
+    command.upgrade(cfg, "0002")
+    engine = sa.create_engine(url)
+    with engine.begin() as conn:
+        _seed_people(conn)
+        _insert_appointment(conn, "booked")
+
+    command.upgrade(cfg, "head")
+
+    with engine.connect() as conn:
+        assert conn.execute(sa.text("SELECT version FROM appointments")).scalar() == 1
+    engine.dispose()
+
+
+def test_downgrade_removes_the_version_column(alembic_cfg):
+    cfg, url = alembic_cfg
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "0002")
+
+    engine = sa.create_engine(url)
+    columns = {c["name"] for c in sa.inspect(engine).get_columns("appointments")}
+    assert "version" not in columns
     engine.dispose()

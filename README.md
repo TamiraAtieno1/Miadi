@@ -50,6 +50,8 @@ Client -> Routers (HTTP, validation, status codes)
 - **Double-booking is stopped by the database:** a partial unique index on `(doctor_id, start_time) WHERE status = 'booked'`, with the integrity error turned into a 409.
 - **Soft cancel:** cancelling keeps the row (status, reason, timestamp) and frees the slot.
 - **Reschedule is one transaction:** if the new slot is invalid or taken, the original booking is untouched.
+**Concurrent changes to one appointment.**
+Each appointment carries a `version` number. A cancel or reschedule only applies if the version is still the one it read, and bumps it. If two requests change the same appointment at once, the second is rejected with a 409 (`concurrent_change`) instead of silently overwriting the first. This is optimistic concurrency: no locks are held while the user decides; conflicts are detected when writing.
 - **UTC in the database, clinic local time (Africa/Nairobi) for working hours.**
 - **PostgreSQL** for production and CI; SQLite only as a local fallback.
 
@@ -119,8 +121,8 @@ Shared fixtures live in `tests/conftest.py`: each test gets a fresh set of table
 |---|---|---|---|
 | `GET /doctors/{id}/availability?date=YYYY-MM-DD` | Free 30-minute slots for the doctor on that clinic-local date | 200 | 404 unknown doctor, 422 bad date |
 | `POST /appointments` | Book a slot (`doctor_id`, `patient_id`, `start_time`) | 201 | 404, 409 slot taken, 422 invalid slot |
-| `PATCH /appointments/{id}/cancel` | Cancel with a `reason`; the slot becomes bookable again | 200 | 404, 409 already cancelled or started, 422 missing reason |
-| `PATCH /appointments/{id}/reschedule` | Move to a new `start_time` (same doctor) | 200 | 404, 409 cancelled / slot taken / same time, 422 invalid slot |
+| `PATCH /appointments/{id}/cancel` | Cancel with a `reason`; the slot becomes bookable again | 200 | 404, 409 already cancelled / started / changed at the same moment, 422 missing reason |
+| `PATCH /appointments/{id}/reschedule` | Move to a new `start_time` (same doctor) | 200 | 404, 409 cancelled / slot taken / same time / changed at the same moment, 422 invalid slot |
 | `GET /patients/{id}/appointments` _(bonus)_ | Upcoming (booked or rescheduled) appointments, soonest first | 200 | 404 |
 | `GET /doctors`, `POST /patients` _(extras)_ | List doctors with their hours; create a patient | 200 / 201 | 422 |
 
