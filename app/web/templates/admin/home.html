@@ -36,7 +36,7 @@
           <td>{{ a.patient.name }}</td>
           <td>{{ a.doctor.name }}</td>
           <td>{{ badge(a.status) }}</td>
-          <td>{% if is_open(a, now) %}{{ cancel_form("/portal/admin/appointments/%d/cancel" % a.id) }}{% endif %}</td>
+          <td>{% if is_open(a, now) %}{{ cancel_form("/portal/admin/appointments/%d/cancel" % a.id, a.version) }}{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

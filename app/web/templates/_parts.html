@@ -4,10 +4,11 @@
 <span class="badge {{ status }}">{{ status_label(status) }}</span>
 {%- endmacro %}
 
-{% macro cancel_form(action) -%}
+{% macro cancel_form(action, version) -%}
 <details class="cancel">
   <summary>Cancel</summary>
   <form method="post" action="{{ action }}">
+    <input type="hidden" name="version" value="{{ version }}">
     <label>Reason
       <input name="reason" required maxlength="500" autocomplete="off">
     </label>
@@ -16,9 +17,10 @@
 </details>
 {%- endmacro %}
 
-{% macro slot_buttons(action, slots, doctor_id=None) -%}
+{% macro slot_buttons(action, slots, doctor_id=None, version=None) -%}
 <form method="post" action="{{ action }}" class="slots">
   {% if doctor_id %}<input type="hidden" name="doctor_id" value="{{ doctor_id }}">{% endif %}
+  {% if version %}<input type="hidden" name="version" value="{{ version }}">{% endif %}
   {% for start, end in slots %}
   <button type="submit" name="start_time" value="{{ start.isoformat() }}" class="slot">
     {{ start.strftime("%H:%M") }}
