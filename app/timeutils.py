@@ -6,6 +6,7 @@ CLINIC_TZ = ZoneInfo("Africa/Nairobi")
 
 
 def utcnow() -> datetime:
+    """Current time as a timezone-aware UTC datetime."""
     return datetime.now(UTC)
 
 
@@ -17,4 +18,5 @@ def as_utc(value: datetime) -> datetime:
 
 
 def to_clinic_time(value: datetime) -> datetime:
+    """Convert a datetime to the clinic's local timezone (Africa/Nairobi)."""
     return as_utc(value).astimezone(CLINIC_TZ)
