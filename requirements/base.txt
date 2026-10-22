@@ -16,10 +16,16 @@ h11==0.16.0
     # via uvicorn
 idna==3.20
     # via anyio
+itsdangerous==2.2.0
+    # via miadi (pyproject.toml)
+jinja2==3.1.6
+    # via miadi (pyproject.toml)
 mako==1.4.3
     # via alembic
 markupsafe==3.0.4
-    # via mako
+    # via
+    #   jinja2
+    #   mako
 opentelemetry-api==1.45.1
     # via fastapi
 psycopg2-binary==2.9.13
@@ -28,6 +34,8 @@ pydantic==2.14.1
     # via fastapi
 pydantic-core==2.50.1
     # via pydantic
+python-multipart==0.0.32
+    # via miadi (pyproject.toml)
 sqlalchemy==2.1.6
     # via
     #   miadi (pyproject.toml)

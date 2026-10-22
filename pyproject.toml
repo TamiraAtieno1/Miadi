@@ -19,6 +19,9 @@ dependencies = [
     "psycopg2-binary>=2.9",
     "tzdata>=2024.1",
     "alembic>=1.13",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.1",
 ]
 
 [project.optional-dependencies]
@@ -32,7 +35,10 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["app", "app.routers", "app.services"]
+packages = ["app", "app.routers", "app.services", "app.web"]
+
+[tool.setuptools.package-data]
+"app.web" = ["templates/**/*.html", "static/*.css"]
 
 [tool.ruff]
 line-length = 100

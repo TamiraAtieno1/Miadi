@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_parts.html" import badge, cancel_form %}
+{% block title %}My appointments{% endblock %}
+{% block nav %}<a href="/portal/patient/book">Book an appointment</a>{% endblock %}
+{% block content %}
+<h1>My appointments</h1>
+<p class="sub">Signed in as {{ user.patient.name }}. Times are Nairobi time.</p>
+
+<section>
+  <h2>Upcoming</h2>
+  {% for day, items in upcoming %}
+  <h3 class="day">{{ day | day_name }}</h3>
+  <ul class="rows">
+    {% for a in items %}
+    <li class="row">
+      <span class="time">{{ a.start_time | clock }}</span>
+      <span class="what"><strong>{{ a.doctor.name }}</strong> <span class="muted">{{ a.doctor.specialty }}</span></span>
+      {{ badge(a.status) }}
+      <span class="actions">
+        {% if is_open(a, now) %}
+        <a href="/portal/patient/appointments/{{ a.id }}/reschedule">Reschedule</a>
+        {{ cancel_form("/portal/patient/appointments/%d/cancel" % a.id) }}
+        {% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">Nothing booked yet. <a href="/portal/patient/book">Book an appointment</a></p>
+  {% endfor %}
+</section>
+
+{% if history %}
+<section>
+  <h2>Past and cancelled</h2>
+  <ul class="rows quiet">
+    {% for a in history %}
+    <li class="row">
+      <span class="time">{{ a.start_time | day_name }}, {{ a.start_time | clock }}</span>
+      <span class="what">{{ a.doctor.name }}
+        {% if a.cancel_reason %}<span class="muted">· {{ a.cancel_reason }}</span>{% endif %}</span>
+      {{ badge(a.status) }}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

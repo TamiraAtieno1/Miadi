@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_parts.html" import slot_buttons %}
+{% block title %}Book an appointment{% endblock %}
+{% block nav %}<a href="/portal/patient">My appointments</a>{% endblock %}
+{% block content %}
+<h1>Book an appointment</h1>
+<p class="sub">Each visit is 30 minutes. Times are Nairobi time.</p>
+
+<form method="get" action="/portal/patient/book" class="picker">
+  <label>Doctor
+    <select name="doctor_id" required>
+      <option value="" {{ 'selected' if doctor_id is none }}>Choose a doctor</option>
+      {% for d in doctors %}
+      <option value="{{ d.id }}" {{ 'selected' if d.id == doctor_id }}>{{ d.name }} · {{ d.specialty }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Day
+    <input type="date" name="day" value="{{ day.isoformat() }}" min="{{ today.isoformat() }}" max="{{ last_day.isoformat() }}" required>
+  </label>
+  <button type="submit">Show times</button>
+</form>
+
+{% if slots is not none %}
+<section>
+  <h2>{{ day | day_name }}</h2>
+  {% if slots %}
+  <p class="sub">Choose a time to book it.</p>
+  {{ slot_buttons("/portal/patient/book", slots, doctor_id) }}
+  {% else %}
+  <p class="empty">No free times that day. Try another day.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -47,3 +47,24 @@ class InvalidStateError(BookingError):
 
     status_code = 409
     code = "invalid_state"
+
+
+class InvalidCredentialsError(BookingError):
+    """The email or password is wrong (401). The message never says which."""
+
+    status_code = 401
+    code = "invalid_credentials"
+
+
+class EmailTakenError(BookingError):
+    """An account with this email already exists (409)."""
+
+    status_code = 409
+    code = "email_taken"
+
+
+class InvalidAccountError(BookingError):
+    """The sign-up details are not acceptable (422)."""
+
+    status_code = 422
+    code = "invalid_account"

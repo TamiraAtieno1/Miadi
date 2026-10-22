@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block header %}{% endblock %}
+{% block content %}
+<div class="auth-grid single">
+  <section class="card">
+    <p class="brand">Miadi</p>
+    <h1>Create a patient account</h1>
+    {% if flashes %}
+    <div class="flashes" role="status">
+      {% for kind, message in flashes %}<p class="flash {{ kind }}">{{ message }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <form method="post" action="/register" class="stack">
+      <label>Full name
+        <input name="name" autocomplete="name" maxlength="100" required autofocus>
+      </label>
+      <label>Email
+        <input type="email" name="email" autocomplete="email" required>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+        <span class="hint">At least 8 characters.</span>
+      </label>
+      <button type="submit" class="primary">Create account</button>
+    </form>
+    <p class="aside">Already have an account? <a href="/login">Sign in</a></p>
+  </section>
+</div>
+{% endblock %}

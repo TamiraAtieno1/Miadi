@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Miadi{% endblock %} · Miadi clinic</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip" href="#main">Skip to content</a>
+  {% block header %}
+  <header class="bar">
+    <a class="brand" href="/">Miadi</a>
+    {% if user %}
+    <nav class="bar-nav" aria-label="Main">
+      {% block nav %}{% endblock %}
+      <span class="who">{{ user.email }}</span>
+      <form method="post" action="/logout"><button class="link" type="submit">Sign out</button></form>
+    </nav>
+    {% endif %}
+  </header>
+  {% endblock %}
+  <main id="main">
+    {% if flashes %}
+    <div class="flashes" role="status">
+      {% for kind, message in flashes %}
+      <p class="flash {{ kind }}">{{ message }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
