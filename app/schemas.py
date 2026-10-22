@@ -52,18 +52,29 @@ class AppointmentCreate(BaseModel):
     start_time: AwareDatetime
 
 
+EXPECTED_VERSION = Field(
+    ge=1,
+    description=(
+        "The `version` of the appointment as you last saw it. If someone has changed the "
+        "appointment since, the request is refused with 409 `stale_version`."
+    ),
+)
+
+
 class CancelRequest(BaseModel):
-    """Request body for cancelling an appointment. A reason is required."""
+    """Request body for cancelling an appointment. A reason and the version you saw are required."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     reason: str = Field(min_length=1, max_length=500)
+    expected_version: int = EXPECTED_VERSION
 
 
 class RescheduleRequest(BaseModel):
-    """Request body for moving an appointment to a new start time."""
+    """Request body for moving an appointment: the new start time and the version you saw."""
 
     start_time: AwareDatetime
+    expected_version: int = EXPECTED_VERSION
 
 
 class AppointmentOut(BaseModel):
@@ -77,6 +88,7 @@ class AppointmentOut(BaseModel):
     start_time: dt.datetime
     end_time: dt.datetime
     status: str
+    version: int  # send this back as `expected_version` when you cancel or reschedule
     cancel_reason: str | None
     cancelled_at: dt.datetime | None
     created_at: dt.datetime

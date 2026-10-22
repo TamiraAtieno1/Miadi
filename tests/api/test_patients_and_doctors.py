@@ -10,7 +10,7 @@ def test_patient_upcoming_appointments_are_sorted_and_exclude_cancelled(client):
     book(client, late)
     book(client, early)
     dropped_id = book(client, dropped).json()["id"]
-    client.patch(f"/appointments/{dropped_id}/cancel", json={"reason": "x"})
+    client.patch(f"/appointments/{dropped_id}/cancel", json={"reason": "x", "expected_version": 1})
 
     response = client.get("/patients/1/appointments")
     assert response.status_code == 200

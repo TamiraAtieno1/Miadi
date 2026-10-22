@@ -13,7 +13,7 @@
     <span class="time">{{ a.start_time | clock }}</span>
     <span class="what"><strong>{{ a.patient.name }}</strong></span>
     {{ badge(a.status) }}
-    <span class="actions">{{ cancel_form("/portal/doctor/appointments/%d/cancel" % a.id) }}</span>
+    <span class="actions">{{ cancel_form("/portal/doctor/appointments/%d/cancel" % a.id, a.version) }}</span>
   </li>
   {% endfor %}
 </ul>

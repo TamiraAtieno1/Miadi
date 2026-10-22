@@ -19,7 +19,7 @@
       <span class="actions">
         {% if is_open(a, now) %}
         <a href="/portal/patient/appointments/{{ a.id }}/reschedule">Reschedule</a>
-        {{ cancel_form("/portal/patient/appointments/%d/cancel" % a.id) }}
+        {{ cancel_form("/portal/patient/appointments/%d/cancel" % a.id, a.version) }}
         {% endif %}
       </span>
     </li>

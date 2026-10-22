@@ -15,6 +15,7 @@ from app.errors import (
     ConcurrentChangeError,
     InvalidStateError,
     SlotUnavailableError,
+    StaleVersionError,
 )
 from app.models import (
     STATUS_BOOKED,
@@ -105,15 +106,36 @@ def book_appointment(
     return appointment
 
 
+def _require_current_version(appointment: Appointment, expected_version: int) -> None:
+    """Refuse to change an appointment the caller has not seen in its latest state.
+
+    The caller says which version it was looking at. If someone changed the appointment
+    since (rescheduled it, cancelled it), acting on the old screen could undo or contradict
+    their change without anyone noticing, so the caller has to reload and decide again.
+    """
+    if appointment.version != expected_version:
+        raise StaleVersionError(
+            "This appointment was changed after you opened it. "
+            "Please reload it to see the latest details, then try again."
+        )
+
+
 def cancel_appointment(
-    db: Session, appointment_id: int, reason: str, now: datetime | None = None
+    db: Session,
+    appointment_id: int,
+    reason: str,
+    expected_version: int,
+    now: datetime | None = None,
 ) -> Appointment:
     """Cancel an appointment (soft delete), which frees its slot.
 
-    Raises `InvalidStateError` if it is already cancelled or has already started.
+    `expected_version` is the version the caller last saw. Raises `StaleVersionError` if the
+    appointment has changed since, and `InvalidStateError` if it is already cancelled or has
+    already started.
     """
     now = now or utcnow()
     appointment = get_appointment(db, appointment_id)
+    _require_current_version(appointment, expected_version)
 
     if appointment.status == STATUS_CANCELLED:
         raise InvalidStateError("This appointment is already cancelled.")
@@ -134,6 +156,7 @@ def reschedule_appointment(
     db: Session,
     appointment_id: int,
     new_start: datetime,
+    expected_version: int,
     now: datetime | None = None,
 ) -> Appointment:
     """Move an appointment to a new slot with the same doctor.
@@ -142,9 +165,13 @@ def reschedule_appointment(
     transaction: if the new slot is invalid or taken, nothing changes and the
     original booking stays in place. Updating the row (rather than cancelling
     and re-creating) frees the old slot automatically.
+
+    `expected_version` is the version the caller last saw; `StaleVersionError` is raised if
+    the appointment has changed since.
     """
     now = now or utcnow()
     appointment = get_appointment(db, appointment_id)
+    _require_current_version(appointment, expected_version)
 
     if appointment.status == STATUS_CANCELLED:
         raise InvalidStateError(

@@ -7,12 +7,17 @@ def test_cancel_frees_the_slot_and_cannot_be_repeated(client):
     start = future_slot(11)
     appt_id = book(client, start).json()["id"]
 
-    response = client.patch(f"/appointments/{appt_id}/cancel", json={"reason": "Can't make it"})
+    response = client.patch(
+        f"/appointments/{appt_id}/cancel", json={"reason": "Can't make it", "expected_version": 1}
+    )
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
     assert response.json()["cancel_reason"] == "Can't make it"
 
-    again = client.patch(f"/appointments/{appt_id}/cancel", json={"reason": "again"})
+    again = client.patch(
+        f"/appointments/{appt_id}/cancel",
+        json={"reason": "again", "expected_version": response.json()["version"]},
+    )
     assert again.status_code == 409
     assert again.json()["code"] == "invalid_state"
 
@@ -24,6 +29,9 @@ def test_cancel_frees_the_slot_and_cannot_be_repeated(client):
 
 def test_cancel_requires_a_reason_and_a_real_appointment(client):
     appt_id = book(client, future_slot(11)).json()["id"]
-    assert client.patch(f"/appointments/{appt_id}/cancel", json={}).status_code == 422
-    assert client.patch(f"/appointments/{appt_id}/cancel", json={"reason": "  "}).status_code == 422
-    assert client.patch("/appointments/999/cancel", json={"reason": "x"}).status_code == 404
+    url = f"/appointments/{appt_id}/cancel"
+    assert client.patch(url, json={"expected_version": 1}).status_code == 422
+    blank = client.patch(url, json={"reason": "  ", "expected_version": 1})
+    assert blank.status_code == 422
+    unknown = client.patch("/appointments/999/cancel", json={"reason": "x", "expected_version": 1})
+    assert unknown.status_code == 404

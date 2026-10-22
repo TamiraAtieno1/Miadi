@@ -19,7 +19,7 @@
 <section>
   <h2>{{ day | day_name }}</h2>
   {% if slots %}
-  {{ slot_buttons("/portal/patient/appointments/%d/reschedule" % appointment.id, slots) }}
+  {{ slot_buttons("/portal/patient/appointments/%d/reschedule" % appointment.id, slots, version=appointment.version) }}
   {% else %}
   <p class="empty">No free times that day. Try another day.</p>
   {% endif %}

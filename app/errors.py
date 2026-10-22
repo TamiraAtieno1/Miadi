@@ -68,3 +68,10 @@ class InvalidAccountError(BookingError):
 
     status_code = 422
     code = "invalid_account"
+
+
+class StaleVersionError(BookingError):
+    """The caller's copy of the appointment is out of date (409)."""
+
+    status_code = 409
+    code = "stale_version"

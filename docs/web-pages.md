@@ -28,6 +28,7 @@ no double booking, optimistic concurrency) applies exactly as it does for the AP
   someone else's appointment gets "we couldn't find that appointment", the same answer as for
   one that does not exist.
 - **Errors** reuse the booking messages, shown as a one-time banner on the next page.
+- **Out-of-date pages** are caught: every cancel and reschedule form carries the appointment's `version` in a hidden field. If the appointment changed after the page was opened, nothing is changed and the user is told to look again.
 
 ## Demo accounts
 

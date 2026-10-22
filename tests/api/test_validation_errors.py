@@ -30,7 +30,9 @@ def test_timestamp_without_an_offset_explains_what_to_send(client):
 
 
 def test_text_where_a_number_is_expected(client):
-    detail = error_of(client.patch("/appointments/abc/cancel", json={"reason": "x"}))
+    detail = error_of(
+        client.patch("/appointments/abc/cancel", json={"reason": "x", "expected_version": 1})
+    )
     assert detail == "The appointment ID must be a whole number."
 
 
@@ -58,7 +60,9 @@ def test_invalid_json_body(client):
 
 
 def test_other_problems_get_a_generic_sentence(client):
-    detail = error_of(client.patch("/appointments/1/cancel", json={"reason": ["a", "b"]}))
+    detail = error_of(
+        client.patch("/appointments/1/cancel", json={"reason": ["a", "b"], "expected_version": 1})
+    )
     assert detail == "The reason is not valid."
 
 

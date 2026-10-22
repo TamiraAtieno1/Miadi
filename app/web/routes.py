@@ -39,6 +39,7 @@ HOME = {
 as_patient = Depends(require_role(ROLE_PATIENT))
 as_doctor = Depends(require_role(ROLE_DOCTOR))
 as_admin = Depends(require_role(ROLE_ADMIN))
+OUT_OF_DATE = "That page was out of date. Please check the appointment below and try again."
 STATUS_CHOICES = (STATUS_BOOKED, STATUS_RESCHEDULED, STATUS_CANCELLED)
 
 
@@ -289,6 +290,7 @@ def reschedule(
     request: Request,
     appointment_id: int,
     start_time: str = Form(""),
+    version: str = Form(""),
     user: User = as_patient,
     db: Session = Depends(get_db),
 ):
@@ -298,9 +300,13 @@ def reschedule(
     if start is None:
         flash(request, "Please pick one of the times shown.", "error")
         return go(back)
+    seen = parse_id(version)
+    if seen is None:
+        flash(request, OUT_OF_DATE, "error")
+        return go(back)
     try:
         appointment = own_appointment(db, user, appointment_id)
-        booking.reschedule_appointment(db, appointment.id, start)
+        booking.reschedule_appointment(db, appointment.id, start, seen)
     except BookingError as error:
         flash(request, error.message, "error")
         return go(back)
@@ -309,16 +315,30 @@ def reschedule(
 
 
 def cancel_for(
-    request: Request, db: Session, user: User, appointment_id: int, reason: str, back: str
+    request: Request,
+    db: Session,
+    user: User,
+    appointment_id: int,
+    reason: str,
+    version: str,
+    back: str,
 ) -> RedirectResponse:
-    """Cancel an appointment the user is allowed to change, then return to `back`."""
+    """Cancel an appointment the user is allowed to change, then return to `back`.
+
+    `version` is the one the page showed. If the appointment has changed since, nothing is
+    cancelled and the user is asked to reload.
+    """
+    seen = parse_id(version)
+    if seen is None:
+        flash(request, OUT_OF_DATE, "error")
+        return go(back)
     try:
         appointment = own_appointment(db, user, appointment_id)
         reason = reason.strip()
         if not reason:
             flash(request, "Please give a reason for cancelling.", "error")
             return go(back)
-        booking.cancel_appointment(db, appointment.id, reason[:500])
+        booking.cancel_appointment(db, appointment.id, reason[:500], seen)
     except BookingError as error:
         flash(request, error.message, "error")
         return go(back)
@@ -331,11 +351,12 @@ def patient_cancel(
     request: Request,
     appointment_id: int,
     reason: str = Form(""),
+    version: str = Form(""),
     user: User = as_patient,
     db: Session = Depends(get_db),
 ):
     """A patient cancels one of their own appointments."""
-    return cancel_for(request, db, user, appointment_id, reason, "/portal/patient")
+    return cancel_for(request, db, user, appointment_id, reason, version, "/portal/patient")
 
 
 # ---------------------------------------------------------------------- doctor
@@ -357,11 +378,12 @@ def doctor_cancel(
     request: Request,
     appointment_id: int,
     reason: str = Form(""),
+    version: str = Form(""),
     user: User = as_doctor,
     db: Session = Depends(get_db),
 ):
     """A doctor cancels one of their own appointments."""
-    return cancel_for(request, db, user, appointment_id, reason, "/portal/doctor")
+    return cancel_for(request, db, user, appointment_id, reason, version, "/portal/doctor")
 
 
 # ----------------------------------------------------------------------- admin
@@ -393,8 +415,9 @@ def admin_cancel(
     request: Request,
     appointment_id: int,
     reason: str = Form(""),
+    version: str = Form(""),
     user: User = as_admin,
     db: Session = Depends(get_db),
 ):
     """An admin cancels any appointment."""
-    return cancel_for(request, db, user, appointment_id, reason, "/portal/admin")
+    return cancel_for(request, db, user, appointment_id, reason, version, "/portal/admin")

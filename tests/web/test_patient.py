@@ -77,7 +77,8 @@ def test_cancelling_moves_it_to_history_and_frees_the_slot(as_patient, db):
     appointment = db.query(Appointment).one()
 
     response = as_patient.post(
-        f"/portal/patient/appointments/{appointment.id}/cancel", data={"reason": "Travelling"}
+        f"/portal/patient/appointments/{appointment.id}/cancel",
+        data={"reason": "Travelling", "version": 1},
     )
     assert response.headers["location"] == "/portal/patient"
     page = as_patient.get("/portal/patient")
@@ -91,7 +92,9 @@ def test_cancelling_moves_it_to_history_and_frees_the_slot(as_patient, db):
 def test_cancelling_needs_a_reason(as_patient, db):
     book_slot(as_patient, future_monday())
     appointment = db.query(Appointment).one()
-    as_patient.post(f"/portal/patient/appointments/{appointment.id}/cancel", data={"reason": "  "})
+    as_patient.post(
+        f"/portal/patient/appointments/{appointment.id}/cancel", data={"reason": "  ", "version": 1}
+    )
     assert "reason for cancelling" in as_patient.get("/portal/patient").text
     db.refresh(appointment)
     assert appointment.status == "booked"
@@ -101,8 +104,8 @@ def test_cancelling_twice_explains_the_problem(as_patient, db):
     book_slot(as_patient, future_monday())
     appointment = db.query(Appointment).one()
     url = f"/portal/patient/appointments/{appointment.id}/cancel"
-    as_patient.post(url, data={"reason": "First"})
-    as_patient.post(url, data={"reason": "Second"})
+    as_patient.post(url, data={"reason": "First", "version": 1})
+    as_patient.post(url, data={"reason": "Second", "version": 2})  # a fresh page, same appointment
     assert "already cancelled" in as_patient.get("/portal/patient").text
 
 
@@ -118,7 +121,9 @@ def test_rescheduling_moves_the_appointment(as_patient, db):
     assert page.text.count('class="slot"') == 15  # its own time is taken
 
     later = monday.replace(hour=14)
-    response = as_patient.post(page_url, data={"start_time": later.isoformat()})
+    response = as_patient.post(
+        page_url, data={"start_time": later.isoformat(), "version": appointment.version}
+    )
     assert response.headers["location"] == "/portal/patient"
     home = as_patient.get("/portal/patient")
     assert "Appointment rescheduled." in home.text
@@ -148,10 +153,10 @@ def test_rescheduling_to_a_bad_time_explains_and_changes_nothing(as_patient, db)
     appointment = db.query(Appointment).one()
     url = f"/portal/patient/appointments/{appointment.id}/reschedule"
 
-    as_patient.post(url, data={"start_time": "soon"})
+    as_patient.post(url, data={"start_time": "soon", "version": 1})
     assert "pick one of the times" in as_patient.get(url).text
 
-    as_patient.post(url, data={"start_time": monday.isoformat()})  # same time
+    as_patient.post(url, data={"start_time": monday.isoformat(), "version": 1})  # same time
     assert "already at that time" in as_patient.get(url).text
     db.refresh(appointment)
     assert appointment.status == "booked"
@@ -168,13 +173,15 @@ def test_a_patient_cannot_touch_someone_elses_appointment(web, db):
     web.post(
         "/register", data={"name": "Other", "email": "o@example.com", "password": "longenough"}
     )
-    cancel = web.post(f"/portal/patient/appointments/{appointment.id}/cancel", data={"reason": "x"})
+    cancel = web.post(
+        f"/portal/patient/appointments/{appointment.id}/cancel", data={"reason": "x", "version": 1}
+    )
     assert cancel.headers["location"] == "/portal/patient"
     assert "find that appointment" in web.get("/portal/patient").text
     web.get(f"/portal/patient/appointments/{appointment.id}/reschedule")
     web.post(
         f"/portal/patient/appointments/{appointment.id}/reschedule",
-        data={"start_time": future_monday(hour=11).isoformat()},
+        data={"start_time": future_monday(hour=11).isoformat(), "version": 1},
     )
     db.refresh(appointment)
     assert appointment.status == "booked"
@@ -184,3 +191,69 @@ def test_a_patient_cannot_touch_someone_elses_appointment(web, db):
 def test_rescheduling_an_unknown_appointment_goes_home(as_patient):
     response = as_patient.get("/portal/patient/appointments/999/reschedule")
     assert response.headers["location"] == "/portal/patient"
+
+
+def test_every_cancel_and_reschedule_form_carries_the_version_it_was_built_from(as_patient, db):
+    book_slot(as_patient, future_monday())
+    appointment = db.query(Appointment).one()
+
+    home = as_patient.get("/portal/patient")
+    assert f'name="version" value="{appointment.version}"' in home.text
+
+    page = as_patient.get(f"/portal/patient/appointments/{appointment.id}/reschedule")
+    assert f'name="version" value="{appointment.version}"' in page.text
+
+
+def test_cancelling_from_an_out_of_date_page_is_refused(as_patient, db):
+    monday = future_monday()
+    book_slot(as_patient, monday)
+    appointment = db.query(Appointment).one()
+    seen = appointment.version  # the page the patient has open
+
+    # meanwhile the appointment is moved (for example from another tab)
+    url = f"/portal/patient/appointments/{appointment.id}"
+    as_patient.post(
+        f"{url}/reschedule",
+        data={"start_time": monday.replace(hour=14).isoformat(), "version": seen},
+    )
+
+    as_patient.post(f"{url}/cancel", data={"reason": "From the old page", "version": seen})
+
+    page = as_patient.get("/portal/patient")
+    assert "changed after you opened it" in page.text
+    db.refresh(appointment)
+    assert appointment.status == "rescheduled"  # not cancelled
+
+
+def test_rescheduling_from_an_out_of_date_page_is_refused(as_patient, db):
+    monday = future_monday()
+    book_slot(as_patient, monday)
+    appointment = db.query(Appointment).one()
+    seen = appointment.version
+    url = f"/portal/patient/appointments/{appointment.id}"
+    as_patient.post(f"{url}/cancel", data={"reason": "Changed my mind", "version": seen})
+
+    as_patient.post(
+        f"{url}/reschedule",
+        data={"start_time": monday.replace(hour=14).isoformat(), "version": seen},
+    )
+
+    assert "changed after you opened it" in as_patient.get(f"{url}/reschedule").text
+    db.refresh(appointment)
+    assert appointment.status == "cancelled"
+
+
+def test_a_form_without_a_version_is_treated_as_out_of_date(as_patient, db):
+    monday = future_monday()
+    book_slot(as_patient, monday)
+    appointment = db.query(Appointment).one()
+    url = f"/portal/patient/appointments/{appointment.id}"
+
+    as_patient.post(f"{url}/cancel", data={"reason": "No version sent"})
+    assert "out of date" in as_patient.get("/portal/patient").text
+
+    as_patient.post(f"{url}/reschedule", data={"start_time": monday.replace(hour=14).isoformat()})
+    assert "out of date" in as_patient.get(f"{url}/reschedule").text
+
+    db.refresh(appointment)
+    assert appointment.status == "booked"
